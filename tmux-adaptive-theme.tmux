@@ -18,10 +18,13 @@
 # Color scheme derived from odedlaz/tmux-onedark-theme (MIT); see LICENSE.
 #
 # POSIX sh so it also runs under a minimal environment (tpm, run-shell); the
-# explicit PATH lets tmux resolve there, and the refresh-client at the end makes
-# a re-apply repaint immediately.
+# extra dirs are APPENDED so tmux still resolves under a minimal environment
+# (e.g. the launchd appearance watcher) without shadowing the tmux that is
+# already on PATH — prepending them lets a stale /usr/bin/tmux win over the real
+# one and talk to the wrong server, so has-session below fails and the theme
+# silently no-ops. The refresh-client at the end makes a re-apply repaint now.
 
-export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin:$PATH"
+export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin"
 command -v tmux >/dev/null 2>&1 || exit 0
 tmux has-session >/dev/null 2>&1 || exit 0
 
