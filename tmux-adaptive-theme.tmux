@@ -127,7 +127,14 @@ mark="#{?window_bell_flag,$c_alert,#{?window_activity_flag,$c_warn,$c_fg}}"
 
 # --- status format strings ---------------------------------------------------
 t "status-right" "#[fg=$c_fg,bg=$c_bg,nounderscore,noitalics]${time_format} #{@pl3} ${date_format} #[fg=$c_sel,bg=$c_bg]#{@pl2}#[fg=$c_sel,bg=$c_sel]#{@pl2}#[fg=$c_fg, bg=$c_sel]${status_widgets} #[fg=$c_accent,bg=$c_sel,nobold,nounderscore,noitalics]#{@pl2}#[fg=$c_bg,bg=$c_accent,bold] #h #[fg=$c_warn, bg=$c_accent]#{@pl2}#[fg=$c_alert,bg=$c_warn]#{@pl2}"
-t "status-left" "#[fg=$c_bg,bg=$c_accent,bold] #S #{prefix_highlight}#[fg=$c_accent,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
+# The session pill doubles as the prefix indicator: its background flips from
+# the accent colour to $c_info while the prefix key (client_prefix) is held, so
+# C-b / backtick state shows right on the #S label. Self-contained via the
+# built-in client_prefix — no dependency on tmux-prefix-highlight being sourced
+# (or on its placeholder surviving a theme re-apply), which the old
+# #{prefix_highlight} segment here silently did.
+sess_bg="#{?client_prefix,$c_info,$c_accent}"
+t "status-left" "#[fg=$c_bg,bg=$sess_bg,bold] #S #[fg=$sess_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
 
 t "window-status-format" "#[fg=$c_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}#[fg=$c_fg,bg=$c_bg] #I #[fg=${mark}]#{@pl1}#[fg=$c_fg] #W #[fg=$c_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
 t "window-status-current-format" "#[fg=$c_bg,bg=$c_sel,nobold,nounderscore,noitalics]#{@pl0}#[fg=$c_fg,bg=$c_sel,nobold] #I #{@pl1} #W #[fg=$c_sel,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
@@ -137,6 +144,15 @@ t "window-status-current-format" "#[fg=$c_bg,bg=$c_sel,nobold,nounderscore,noita
 # format placeholders resolve, then refresh each client so a re-apply (e.g. from
 # an appearance watcher) repaints immediately instead of on the next attach.
 plug="${TMUX_PLUGIN_MANAGER_PATH:-$HOME/.local/share/tmux/plugins}"
+# TMUX_PLUGIN_MANAGER_PATH is commonly set with a literal leading '~' (tmux
+# set-environment performs no tilde expansion), and the quoted -x test below
+# won't expand it either — so without this the test silently fails and the
+# battery/cpu/prefix widgets never get re-sourced, leaving their placeholders
+# (#{cpu_percentage}, …) raw and rendering empty after any theme re-apply.
+case "$plug" in
+   "~")   plug="$HOME" ;;
+   "~/"*) plug="$HOME/${plug#"~/"}" ;;
+esac
 for p in tmux-prefix-highlight/prefix_highlight tmux-battery/battery tmux-cpu/cpu; do
    [ -x "$plug/$p.tmux" ] && "$plug/$p.tmux" >/dev/null 2>&1
 done
