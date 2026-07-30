@@ -1,14 +1,15 @@
 #!/bin/sh
-# detect-appearance.sh — set @adaptive_appearance from the terminal's ACTUAL
-# background (via an OSC 11 query) and re-apply tmux-adaptive-theme. This is how
-# the theme tracks the terminal's light/dark theme without relying on the OS
-# appearance — so it's correct even on terminals that don't follow the OS
-# (Alacritty, kitty, …).
+# detect-appearance.sh — FALLBACK detector for terminals without native theme
+# reporting (DEC mode 2031): set @adaptive_appearance from the terminal's ACTUAL
+# background via an OSC 11 query and re-apply the theme. On terminals that DO
+# support 2031 (kitty, recent iTerm2, Ghostty, WezTerm, …) you don't need this —
+# tmux-adaptive-theme.tmux wires up tmux's native client-light-theme/
+# client-dark-theme hooks, which are push-based, tty-free, and relay through SSH.
+# This script is for the stragglers (Apple Terminal.app, older clients).
 #
 # It MUST run from an interactive terminal: the OSC query needs a controlling
 # tty, which tmux's run-shell and the theme itself don't have. Wire it into your
-# shell so the bar updates automatically when the terminal theme changes, e.g.
-# for zsh:
+# shell so the bar updates when the terminal theme changes, e.g. for zsh:
 #
 #     autoload -Uz add-zsh-hook
 #     add-zsh-hook precmd() { ~/.local/share/tmux/plugins/tmux-adaptive-theme/detect-appearance.sh }
@@ -43,7 +44,6 @@ lum=$(( (r*2126 + g*7152 + b*722) / 10000 ))
 [ "$lum" -gt 128 ] && want=light || want=dark
 
 # --- apply -------------------------------------------------------------------
-if [ "$(tmux show-option -gqv @adaptive_appearance)" != "$want" ]; then
-   tmux set-option -g @adaptive_appearance "$want"
-   tmux run-shell -b "$(dirname "$0")/tmux-adaptive-theme.tmux"
-fi
+# Route through the shared funnel so this fallback and the native theme hooks
+# take the exact same apply path (set option -> publish state file -> repaint).
+"$(dirname "$0")/set-appearance.sh" "$want"

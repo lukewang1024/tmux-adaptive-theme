@@ -10,10 +10,12 @@
 #   * Activity/bell show as a recolored #I/#W separator mark (activity -> yellow,
 #     bell -> red) rather than a reverse-video banner.
 #
-# Light vs dark is decided by the terminal's ACTUAL background (not the OS
-# preference), detected by the companion detect-appearance.sh (OSC 11) which sets
-# @adaptive_appearance; run that from your shell (see README). This theme has no
-# tty of its own, so it just consumes @adaptive_appearance.
+# Light vs dark is decided by the terminal's ACTUAL theme (not the OS
+# preference). Primary source: tmux's native client-light-theme/client-dark-theme
+# hooks (tmux 3.5+, DEC mode 2031), wired up below — push-based and SSH-safe.
+# Fallback for terminals without 2031: the companion detect-appearance.sh
+# (OSC 11), run from your shell (see README). Either way @adaptive_appearance
+# holds the decision; this theme just consumes it (it has no tty of its own).
 #
 # Color scheme derived from odedlaz/tmux-onedark-theme (MIT); see LICENSE.
 #
@@ -28,6 +30,21 @@ export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$HOME/.local/b
 command -v tmux >/dev/null 2>&1 || exit 0
 tmux has-session >/dev/null 2>&1 || exit 0
 
+# --- subscribe to the terminal's NATIVE light/dark reporting (tmux 3.5+) ------
+# Terminals that implement DEC private mode 2031 (kitty >=0.35, recent iTerm2,
+# Ghostty, WezTerm, foot, Contour, Rio, …) push a notification the instant their
+# theme flips; tmux negotiates 2031 with its outer terminal and fires these
+# hooks. The report also relays through SSH and nested tmux, so a remote tmux's
+# hooks fire from the real local terminal — no tty, no polling, no manual
+# re-sync, no palette reading. Terminals without 2031 (Apple Terminal.app, older
+# clients) simply never fire these; the OSC-11 fallback (detect-appearance.sh)
+# or an OS-appearance watcher covers them. Re-registering on every apply is
+# idempotent (set-hook -g replaces) and cannot recurse: the hooks call
+# set-appearance.sh, which re-runs this script but does not itself re-fire them.
+_dir=$(dirname "$0")
+tmux set-hook -g client-light-theme "run-shell -b '$_dir/set-appearance.sh light'"
+tmux set-hook -g client-dark-theme  "run-shell -b '$_dir/set-appearance.sh dark'"
+
 get() {
    _v=$(tmux show-option -gqv "$1")
    if [ -n "$_v" ]; then printf '%s' "$_v"; else printf '%s' "$2"; fi
@@ -41,6 +58,19 @@ tw() { tmux set-window-option -gq "$1" "$2"; }
 # it; default dark until the first detection runs.
 appearance=$(get "@adaptive_appearance" "dark")
 [ "$appearance" = light ] || appearance=dark
+
+# Publish the resolved appearance to a per-host state file so non-tmux consumers
+# can track the same signal without querying the terminal themselves — nvim's
+# libuv fs watcher (which tmux would otherwise starve, since tmux consumes the
+# 2031 report and does not forward it to panes), plain vim's FocusGained hook,
+# etc. Atomic write (temp + rename) so a watcher never reads a half-written
+# file, and only on change so re-applies/attaches don't fire watchers spuriously.
+_state="${XDG_STATE_HOME:-$HOME/.local/state}/appearance"
+if [ "$(cat "$_state" 2>/dev/null)" != "$appearance" ]; then
+   mkdir -p "$(dirname "$_state")" 2>/dev/null
+   printf '%s\n' "$appearance" > "$_state.$$" 2>/dev/null &&
+      mv "$_state.$$" "$_state" 2>/dev/null
+fi
 
 if [ "$appearance" = light ]; then
    # Atom One Light
