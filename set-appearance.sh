@@ -17,11 +17,20 @@ command -v tmux >/dev/null 2>&1 || exit 0
 tmux has-session >/dev/null 2>&1 || exit 0
 
 dir=$(dirname "$0")
+old=$(tmux show-option -gqv @adaptive_appearance)
+if [ "$old" = "$want" ]; then changed=no; else changed=yes; fi
+
+trace="${XDG_STATE_HOME:-$HOME/.local/state}/tmux/appearance.log"
+mkdir -p "$(dirname "$trace")" 2>/dev/null || true
+printf '%s pid=%s ppid=%s source=set-appearance old=%s want=%s changed=%s client_themes=%s tmux=%s\n' \
+   "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$$" "$PPID" "${old:-unset}" "$want" \
+   "$changed" "$(tmux list-clients -F '#{client_theme}' 2>/dev/null | tr '\n' ',' | sed 's/,$//')" \
+   "${TMUX:-none}" >> "$trace" 2>/dev/null || true
 
 # Only touch the option (and thus repaint) when it actually changes; but always
 # re-run the theme so a first apply after tmux start still paints. The theme
 # itself publishes the state file, guarded on change.
-if [ "$(tmux show-option -gqv @adaptive_appearance)" != "$want" ]; then
+if [ "$changed" = yes ]; then
    tmux set-option -g @adaptive_appearance "$want"
 fi
 tmux run-shell -b "$dir/tmux-adaptive-theme.tmux"
