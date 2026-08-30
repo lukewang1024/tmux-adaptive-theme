@@ -148,15 +148,44 @@ t "@prefix_highlight_bg" "$c_accent"
 t "@prefix_highlight_copy_mode_attr" "fg=$c_bg,bg=$c_accent"
 t "@prefix_highlight_output_prefix" "  "
 
+plug="${TMUX_PLUGIN_MANAGER_PATH:-$HOME/.local/share/tmux/plugins}"
+case "$plug" in
+   "~")   plug="$HOME" ;;
+   "~/"*) plug="$HOME/${plug#"~/"}" ;;
+esac
 status_widgets=$(get "@adaptive_widgets")
+# CPU/battery plugins only interpolate placeholders found directly in
+# status-right.  Responsive sections live in an opaque option, so resolve the
+# placeholders here before storing that section.
+status_widgets=$(printf '%s' "$status_widgets" | sed \
+   -e "s|#{cpu_percentage}|#($plug/tmux-cpu/scripts/cpu_percentage.sh)|g" \
+   -e "s|#{battery_icon}|#($plug/tmux-battery/scripts/battery_icon.sh)|g" \
+   -e "s|#{battery_percentage}|#($plug/tmux-battery/scripts/battery_percentage.sh)|g")
 time_format=$(get "@adaptive_time_format" "%R")
 date_format=$(get "@adaptive_date_format" "%d/%m/%Y")
+time_min_width=$(get "@adaptive_time_min_width" "0")
+date_min_width=$(get "@adaptive_date_min_width" "0")
+widgets_min_width=$(get "@adaptive_widgets_min_width" "0")
 
 # activity -> warn, bell -> alert, else normal: recolors the #I/#W separator.
 mark="#{?window_bell_flag,$c_alert,#{?window_activity_flag,$c_warn,$c_fg}}"
 
 # --- status format strings ---------------------------------------------------
-t "status-right" "#[fg=$c_fg,bg=$c_bg,nounderscore,noitalics]${time_format} #{@pl3} ${date_format} #[fg=$c_sel,bg=$c_bg]#{@pl2}#[fg=$c_sel,bg=$c_sel]#{@pl2}#[fg=$c_fg, bg=$c_sel]${status_widgets} #[fg=$c_accent,bg=$c_sel,nobold,nounderscore,noitalics]#{@pl2}#[fg=$c_bg,bg=$c_accent,bold] #h #[fg=$c_warn, bg=$c_accent]#{@pl2}#[fg=$c_alert,bg=$c_warn]#{@pl2}"
+# Store complete styled sections in opaque options.  The status format can then
+# conditionally include each whole section without commas inside style strings
+# confusing tmux's conditional-format parser.
+t "@adaptive_status_time" "#[fg=$c_fg,bg=$c_bg,nounderscore,noitalics]${time_format} #{@pl3} "
+t "@adaptive_status_date" "#[fg=$c_fg,bg=$c_bg,nounderscore,noitalics]${date_format} "
+t "@adaptive_status_widgets_lead" "#[fg=$c_sel,bg=$c_bg]#{@pl2}#[fg=$c_sel,bg=$c_sel]#{@pl2}#[fg=$c_fg,bg=$c_sel]"
+t "@adaptive_status_widgets_tail" " #[fg=$c_accent,bg=$c_sel,nobold,nounderscore,noitalics]#{@pl2}"
+t "@adaptive_status_host_lead" "#[fg=$c_accent,bg=$c_bg]#{@pl2}"
+# Match Peon Ping's tab-colour semantics: ready/idle green, working amber,
+# done blue, and approval/blocked red.  Use this theme's adaptive equivalents
+# so the badge remains legible in both light and dark terminal palettes.
+agent_bg="#{?#{==:#{@workbench_window_state},blocked},$c_alert,#{?#{==:#{@workbench_window_state},working},$c_warn,#{?#{==:#{@workbench_window_state},done},$c_info,$c_accent}}}"
+t "@adaptive_status_agent" "#[fg=${agent_bg},bg=$c_accent,nobold]#{@pl2}#[fg=$c_bg,bg=${agent_bg},bold] #{@workbench_window_label} "
+t "@adaptive_status_host_close" "#[fg=$c_bg,bg=$c_accent,nobold]#{@pl2}"
+t "status-right" "#{?#{e|>=:#{client_width},${time_min_width}},#{E:@adaptive_status_time},}#{?#{e|>=:#{client_width},${date_min_width}},#{E:@adaptive_status_date},}#{?#{e|>=:#{client_width},${widgets_min_width}},#{E:@adaptive_status_widgets_lead},}${status_widgets}#{?#{e|>=:#{client_width},${widgets_min_width}},#{E:@adaptive_status_widgets_tail},#{E:@adaptive_status_host_lead}}#[fg=$c_bg,bg=$c_accent,bold] #h #{?#{@workbench_window_state},#{E:@adaptive_status_agent},#{E:@adaptive_status_host_close}}"
 # The session pill doubles as the prefix indicator: its background flips from
 # the accent colour to $c_info while the prefix key (client_prefix) is held, so
 # C-b / backtick state shows right on the #S label. Self-contained via the
@@ -173,16 +202,11 @@ t "window-status-current-format" "#[fg=$c_bg,bg=$c_sel,nobold,nounderscore,noita
 # prefix-highlight) that tpm may source after this theme; re-run them so their
 # format placeholders resolve, then refresh each client so a re-apply (e.g. from
 # an appearance watcher) repaints immediately instead of on the next attach.
-plug="${TMUX_PLUGIN_MANAGER_PATH:-$HOME/.local/share/tmux/plugins}"
 # TMUX_PLUGIN_MANAGER_PATH is commonly set with a literal leading '~' (tmux
 # set-environment performs no tilde expansion), and the quoted -x test below
 # won't expand it either — so without this the test silently fails and the
 # battery/cpu/prefix widgets never get re-sourced, leaving their placeholders
 # (#{cpu_percentage}, …) raw and rendering empty after any theme re-apply.
-case "$plug" in
-   "~")   plug="$HOME" ;;
-   "~/"*) plug="$HOME/${plug#"~/"}" ;;
-esac
 for p in tmux-prefix-highlight/prefix_highlight tmux-battery/battery tmux-cpu/cpu; do
    [ -x "$plug/$p.tmux" ] && "$plug/$p.tmux" >/dev/null 2>&1
 done
