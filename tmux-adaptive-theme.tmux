@@ -181,7 +181,7 @@ mark="#{?window_bell_flag,$c_alert,#{?window_activity_flag,$c_warn,$c_fg}}"
 # confusing tmux's conditional-format parser.
 t "@adaptive_status_time" "#[fg=$c_fg,bg=$c_bg,nounderscore,noitalics]${time_format} #{@pl3} "
 t "@adaptive_status_date" "#[fg=$c_fg,bg=$c_bg,nounderscore,noitalics]${date_format} "
-t "@adaptive_status_metrics_lead" "#[fg=$c_sel,bg=$c_bg]#{@pl2}#[fg=$c_fg,bg=$c_sel]"
+t "@adaptive_status_metrics_lead" "#[fg=$c_sel,bg=$c_bg]#{@pl2}#[fg=$c_fg,bg=$c_sel] "
 t "@adaptive_status_host_lead" "#[fg=$c_sel,bg=$c_bg]#{@pl2}"
 # Match Peon Ping's tab-colour semantics: ready/idle green, working amber,
 # done blue, and approval/blocked red.  Use this theme's adaptive equivalents
