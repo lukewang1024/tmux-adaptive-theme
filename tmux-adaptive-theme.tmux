@@ -100,6 +100,7 @@ t "@pl0" "$(printf '\356\202\260')"   # U+E0B0  right, filled
 t "@pl1" "$(printf '\356\202\261')"   # U+E0B1  right, thin
 t "@pl2" "$(printf '\356\202\262')"   # U+E0B2  left,  filled
 t "@pl3" "$(printf '\356\202\263')"   # U+E0B3  left,  thin
+t "@adaptive_agent_icon" "$(printf '\363\260\232\251')" # U+F06A9 Nerd Font robot
 
 # Clear deprecated *-fg/*-bg/*-attr options first. tmux still honours them and
 # lets them OVERRIDE the modern *-style options this theme uses, so any legacy
@@ -153,19 +154,23 @@ case "$plug" in
    "~")   plug="$HOME" ;;
    "~/"*) plug="$HOME/${plug#"~/"}" ;;
 esac
-status_widgets=$(get "@adaptive_widgets")
+maintenance=$(get "@adaptive_maintenance" "")
+battery_status=$(get "@adaptive_battery" "")
+cpu_status=$(get "@adaptive_cpu" "$(get "@adaptive_widgets" "")")
 # CPU/battery plugins only interpolate placeholders found directly in
-# status-right.  Responsive sections live in an opaque option, so resolve the
-# placeholders here before storing that section.
-status_widgets=$(printf '%s' "$status_widgets" | sed \
-   -e "s|#{cpu_percentage}|#($plug/tmux-cpu/scripts/cpu_percentage.sh)|g" \
+# status-right. Resolve them before composing the responsive metric sections.
+battery_status=$(printf '%s' "$battery_status" | sed \
    -e "s|#{battery_icon}|#($plug/tmux-battery/scripts/battery_icon.sh)|g" \
    -e "s|#{battery_percentage}|#($plug/tmux-battery/scripts/battery_percentage.sh)|g")
+cpu_status=$(printf '%s' "$cpu_status" | sed \
+   -e "s|#{cpu_percentage}|#($plug/tmux-cpu/scripts/cpu_percentage.sh)|g" \
+   -e "s|#{cpu_icon}|#($plug/tmux-cpu/scripts/cpu_icon.sh)|g")
 time_format=$(get "@adaptive_time_format" "%R")
 date_format=$(get "@adaptive_date_format" "%d/%m/%Y")
 time_min_width=$(get "@adaptive_time_min_width" "0")
 date_min_width=$(get "@adaptive_date_min_width" "0")
-widgets_min_width=$(get "@adaptive_widgets_min_width" "0")
+battery_min_width=$(get "@adaptive_battery_min_width" "0")
+cpu_min_width=$(get "@adaptive_cpu_min_width" "0")
 
 # activity -> warn, bell -> alert, else normal: recolors the #I/#W separator.
 mark="#{?window_bell_flag,$c_alert,#{?window_activity_flag,$c_warn,$c_fg}}"
@@ -176,16 +181,15 @@ mark="#{?window_bell_flag,$c_alert,#{?window_activity_flag,$c_warn,$c_fg}}"
 # confusing tmux's conditional-format parser.
 t "@adaptive_status_time" "#[fg=$c_fg,bg=$c_bg,nounderscore,noitalics]${time_format} #{@pl3} "
 t "@adaptive_status_date" "#[fg=$c_fg,bg=$c_bg,nounderscore,noitalics]${date_format} "
-t "@adaptive_status_widgets_lead" "#[fg=$c_sel,bg=$c_bg]#{@pl2}#[fg=$c_sel,bg=$c_sel]#{@pl2}#[fg=$c_fg,bg=$c_sel]"
-t "@adaptive_status_widgets_tail" " #[fg=$c_accent,bg=$c_sel,nobold,nounderscore,noitalics]#{@pl2}"
-t "@adaptive_status_host_lead" "#[fg=$c_accent,bg=$c_bg]#{@pl2}"
+t "@adaptive_status_metrics_lead" "#[fg=$c_sel,bg=$c_bg]#{@pl2}#[fg=$c_fg,bg=$c_sel]"
+t "@adaptive_status_host_lead" "#[fg=$c_sel,bg=$c_bg]#{@pl2}"
 # Match Peon Ping's tab-colour semantics: ready/idle green, working amber,
 # done blue, and approval/blocked red.  Use this theme's adaptive equivalents
 # so the badge remains legible in both light and dark terminal palettes.
 agent_bg="#{?#{==:#{@workbench_window_state},blocked},$c_alert,#{?#{==:#{@workbench_window_state},working},$c_warn,#{?#{==:#{@workbench_window_state},done},$c_info,$c_accent}}}"
-t "@adaptive_status_agent" "#[fg=${agent_bg},bg=$c_accent,nobold]#{@pl2}#[fg=$c_bg,bg=${agent_bg},bold] #{@workbench_window_label} "
-t "@adaptive_status_host_close" "#[fg=$c_bg,bg=$c_accent,nobold]#{@pl2}"
-t "status-right" "#{?#{e|>=:#{client_width},${time_min_width}},#{E:@adaptive_status_time},}#{?#{e|>=:#{client_width},${date_min_width}},#{E:@adaptive_status_date},}#{?#{e|>=:#{client_width},${widgets_min_width}},#{E:@adaptive_status_widgets_lead},}${status_widgets}#{?#{e|>=:#{client_width},${widgets_min_width}},#{E:@adaptive_status_widgets_tail},#{E:@adaptive_status_host_lead}}#[fg=$c_bg,bg=$c_accent,bold] #h #{?#{@workbench_window_state},#{E:@adaptive_status_agent},#{E:@adaptive_status_host_close}}"
+t "@adaptive_status_agent" "#[fg=${agent_bg},bg=$c_sel,nobold]#{@pl2}#[fg=$c_bg,bg=${agent_bg},bold] #{@adaptive_agent_icon} #{@workbench_window_label} "
+t "@adaptive_status_host_close" "#[fg=$c_accent,bg=$c_sel,nobold]#{@pl2}#[fg=$c_bg,bg=$c_accent] #{@adaptive_agent_icon} "
+t "status-right" "${maintenance}#{?#{e|>=:#{client_width},${time_min_width}},#{E:@adaptive_status_time},}#{?#{e|>=:#{client_width},${date_min_width}},#{E:@adaptive_status_date},}#{?#{e|>=:#{client_width},${cpu_min_width}},#{E:@adaptive_status_metrics_lead},#{E:@adaptive_status_host_lead}}#{?#{e|>=:#{client_width},${battery_min_width}},${battery_status} #{@pl3} ,}#{?#{e|>=:#{client_width},${cpu_min_width}},${cpu_status} #{@pl3} ,}#[fg=$c_fg,bg=$c_sel,bold] #h #{?#{@workbench_window_state},#{E:@adaptive_status_agent},#{E:@adaptive_status_host_close}}"
 # The session pill doubles as the prefix indicator: its background flips from
 # the accent colour to $c_info while the prefix key (client_prefix) is held, so
 # C-b / backtick state shows right on the #S label. Self-contained via the
