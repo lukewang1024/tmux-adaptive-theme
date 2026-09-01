@@ -125,10 +125,18 @@ t "status-justify" "left"
 t "status-left-length" "100"
 t "status-right-length" "150"
 t "status-style" "bg=$c_bg,fg=$c_fg,none"
-# Transient notices replace the status line, so give the whole overlay a clear
-# semantic colour instead of letting it blend into the neutral status chrome.
-t "message-style" "bg=$c_warn,fg=$c_bg,fill=$c_warn,bold"
-t "message-command-style" "bg=$c_warn,fg=$c_bg,fill=$c_warn,bold"
+# Status messages are transient notices, so give them the semantic warning
+# background instead of letting them disappear into the ordinary status bar.
+# Options permit a personal override without forking the theme.
+message_bg=$(get "@adaptive_message_bg" "$c_warn")
+if [ "$appearance" = light ]; then
+   message_contrast="$c_fg"
+else
+   message_contrast="$c_bg"
+fi
+message_fg=$(get "@adaptive_message_fg" "$message_contrast")
+t "message-style" "bg=$message_bg,fg=$message_fg,fill=$message_bg,bold"
+t "message-command-style" "bg=$message_bg,fg=$message_fg,fill=$message_bg,bold"
 
 tw "window-status-style" "fg=$c_fg,bg=$c_bg,none"
 # Keep activity/bell tabs neutral (no reverse-video banner); the indicator is
