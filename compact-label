@@ -1,0 +1,23 @@
+#!/bin/sh
+set -eu
+
+value=${1-}
+limit=${2-12}
+
+case $limit in
+   ''|*[!0-9]*) limit=12 ;;
+esac
+
+awk -v value="$value" -v limit="$limit" 'BEGIN {
+   if (length(value) <= limit) {
+      print value
+      exit
+   }
+   if (limit <= 3) {
+      print substr(value, 1, limit)
+      exit
+   }
+   left = int(limit / 2)
+   right = limit - 1 - left
+   print substr(value, 1, left) "…" substr(value, length(value) - right + 1)
+}'

@@ -125,8 +125,10 @@ t "status-justify" "left"
 t "status-left-length" "100"
 t "status-right-length" "150"
 t "status-style" "bg=$c_bg,fg=$c_fg,none"
-t "message-style" "bg=$c_bg,fg=$c_fg"
-t "message-command-style" "bg=$c_bg,fg=$c_fg"
+# Transient notices replace the status line, so give the whole overlay a clear
+# semantic colour instead of letting it blend into the neutral status chrome.
+t "message-style" "bg=$c_warn,fg=$c_bg,fill=$c_warn,bold"
+t "message-command-style" "bg=$c_warn,fg=$c_bg,fill=$c_warn,bold"
 
 tw "window-status-style" "fg=$c_fg,bg=$c_bg,none"
 # Keep activity/bell tabs neutral (no reverse-video banner); the indicator is
@@ -171,6 +173,10 @@ time_min_width=$(get "@adaptive_time_min_width" "0")
 date_min_width=$(get "@adaptive_date_min_width" "0")
 battery_min_width=$(get "@adaptive_battery_min_width" "0")
 cpu_min_width=$(get "@adaptive_cpu_min_width" "0")
+compact_min_width=$(get "@adaptive_compact_min_width" "0")
+session_compact_chars=$(get "@adaptive_session_compact_chars" "8")
+host_compact_chars=$(get "@adaptive_host_compact_chars" "8")
+script_dir=$(CDPATH='' cd "$(dirname "$0")" && pwd -P)
 
 # activity -> warn, bell -> alert, else normal: recolors the #I/#W separator.
 mark="#{?window_bell_flag,$c_alert,#{?window_activity_flag,$c_warn,$c_fg}}"
@@ -182,14 +188,24 @@ mark="#{?window_bell_flag,$c_alert,#{?window_activity_flag,$c_warn,$c_fg}}"
 t "@adaptive_status_time" "#[fg=$c_fg,bg=$c_bg,nounderscore,noitalics]${time_format} #{@pl3} "
 t "@adaptive_status_date" "#[fg=$c_fg,bg=$c_bg,nounderscore,noitalics]${date_format} "
 t "@adaptive_status_metrics_lead" "#[fg=$c_sel,bg=$c_bg]#{@pl2}#[fg=$c_fg,bg=$c_sel] "
-t "@adaptive_status_host_lead" "#[fg=$c_sel,bg=$c_bg]#{@pl2}"
 # Match Peon Ping's tab-colour semantics: ready/idle green, working amber,
 # done blue, and approval/blocked red.  Use this theme's adaptive equivalents
 # so the badge remains legible in both light and dark terminal palettes.
-agent_bg="#{?#{==:#{@workbench_window_state},blocked},$c_alert,#{?#{==:#{@workbench_window_state},working},$c_warn,#{?#{==:#{@workbench_window_state},done},$c_info,$c_accent}}}"
-t "@adaptive_status_agent" "#[fg=${agent_bg},bg=$c_sel,nobold]#{@pl2}#[fg=$c_bg,bg=${agent_bg},bold] #{@adaptive_agent_icon} #{@workbench_window_label} "
+agent_bg="#{?#{==:#{@workbench_window_state},blocked},$c_alert,#{?#{==:#{@workbench_window_state},working},$c_warn,#{?#{==:#{@workbench_window_state},done},$c_info,#{?#{==:#{@workbench_window_state},idle},$c_accent,$c_dim}}}}"
+agent_mark="#{?#{==:#{@workbench_window_state},blocked},!,#{?#{==:#{@workbench_window_state},working},●,#{?#{==:#{@workbench_window_state},done},✓,#{?#{==:#{@workbench_window_state},idle},○,?}}}}"
+agent_content="#{@adaptive_agent_icon} #{?#{e|>=:#{client_width},${compact_min_width}},#{@workbench_window_label},${agent_mark}}"
+t "@adaptive_status_agent" "#[fg=${agent_bg},bg=$c_sel,nobold]#{@pl2}#[fg=$c_bg,bg=${agent_bg},bold] ${agent_content} "
+t "@adaptive_status_agent_standalone" "#[fg=${agent_bg},bg=$c_bg,nobold]#{@pl2}#[fg=$c_bg,bg=${agent_bg},bold] ${agent_content} "
 t "@adaptive_status_host_close" "#[fg=$c_accent,bg=$c_sel,nobold]#{@pl2}#[fg=$c_bg,bg=$c_accent] #{@adaptive_agent_icon} "
-t "status-right" "${maintenance}#{?#{e|>=:#{client_width},${time_min_width}},#{E:@adaptive_status_time},}#{?#{e|>=:#{client_width},${date_min_width}},#{E:@adaptive_status_date},}#{?#{e|>=:#{client_width},${cpu_min_width}},#{E:@adaptive_status_metrics_lead},#{E:@adaptive_status_host_lead}}#{?#{e|>=:#{client_width},${battery_min_width}},${battery_status} #{@pl3} ,}#{?#{e|>=:#{client_width},${cpu_min_width}},${cpu_status} #{@pl3} ,}#[fg=$c_fg,bg=$c_sel,bold] #h #{?#{@workbench_window_state},#{E:@adaptive_status_agent},#{E:@adaptive_status_host_close}}"
+t "@adaptive_status_empty_agent_standalone" "#[fg=$c_accent,bg=$c_bg,nobold]#{@pl2}#[fg=$c_bg,bg=$c_accent] #{@adaptive_agent_icon} "
+# Agent is the non-negotiable tail.  Every optional tier before it includes its
+# own opening separator, so a hidden/truncated tier can never leave a loose grey
+# triangle behind.  Below host_min_width the complete right side is only the
+# agent capsule; session/window/host compaction therefore creates space for
+# state instead of allowing tmux to crop it away. Host remains present at every
+# width, using the same middle truncation as the session in compact mode.
+t "@adaptive_status_host" "#[fg=$c_sel,bg=$c_bg]#{@pl2}#[fg=$c_fg,bg=$c_sel,bold] #{?#{e|>=:#{client_width},${compact_min_width}},#H,#($script_dir/compact-label #{q:host} $host_compact_chars)} "
+t "status-right" "${maintenance}#{?#{e|>=:#{client_width},${time_min_width}},#{E:@adaptive_status_time},}#{?#{e|>=:#{client_width},${date_min_width}},#{E:@adaptive_status_date},}#{?#{e|>=:#{client_width},${cpu_min_width}},#{E:@adaptive_status_metrics_lead},}#{?#{e|>=:#{client_width},${battery_min_width}},${battery_status} #{@pl3} ,}#{?#{e|>=:#{client_width},${cpu_min_width}},${cpu_status} #{@pl3} ,}#{E:@adaptive_status_host}#{?#{@workbench_window_state},#{E:@adaptive_status_agent},#{E:@adaptive_status_host_close}}"
 # The session pill doubles as the prefix indicator: its background flips from
 # the accent colour to $c_info while the prefix key (client_prefix) is held, so
 # C-b / backtick state shows right on the #S label. Self-contained via the
@@ -197,10 +213,12 @@ t "status-right" "${maintenance}#{?#{e|>=:#{client_width},${time_min_width}},#{E
 # (or on its placeholder surviving a theme re-apply), which the old
 # #{prefix_highlight} segment here silently did.
 sess_bg="#{?client_prefix,$c_info,$c_accent}"
-t "status-left" "#[fg=$c_bg,bg=$sess_bg,bold] #S #[fg=$sess_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
+t "@adaptive_status_session_full" "#[fg=$c_bg,bg=$sess_bg,bold] #S #[fg=$sess_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
+t "@adaptive_status_session_compact" "#[fg=$c_bg,bg=$sess_bg,bold] #($script_dir/compact-label #{q:session_name} $session_compact_chars) #[fg=$sess_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
+t "status-left" "#{?#{e|>=:#{client_width},${compact_min_width}},#{E:@adaptive_status_session_full},#{E:@adaptive_status_session_compact}}"
 
-t "window-status-format" "#[fg=$c_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}#[fg=$c_fg,bg=$c_bg] #I #[fg=${mark}]#{@pl1}#[fg=$c_fg] #W #[fg=$c_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
-t "window-status-current-format" "#[fg=$c_bg,bg=$c_sel,nobold,nounderscore,noitalics]#{@pl0}#[fg=$c_fg,bg=$c_sel,nobold] #I #{@pl1} #W #[fg=$c_sel,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
+t "window-status-format" "#[fg=$c_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}#[fg=$c_fg,bg=$c_bg] #I #{?#{e|>=:#{client_width},${compact_min_width}},#[fg=${mark}]#{@pl1}#[fg=$c_fg] #W ,}#[fg=$c_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
+t "window-status-current-format" "#[fg=$c_bg,bg=$c_sel,nobold,nounderscore,noitalics]#{@pl0}#[fg=$c_fg,bg=$c_sel,nobold] #I #{?#{e|>=:#{client_width},${compact_min_width}},#{@pl1} #W ,}#[fg=$c_sel,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
 
 # The widgets in status-right come from other plugins (battery/cpu/
 # prefix-highlight) that tpm may source after this theme; re-run them so their
