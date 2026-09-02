@@ -218,15 +218,15 @@ t "@adaptive_status_host" "#[fg=$c_sel,bg=$c_bg]#{@pl2}#{E:@adaptive_status_host
 t "@adaptive_status_metrics" "#{E:@adaptive_status_metrics_lead}#{?#{e|>=:#{client_width},${battery_min_width}},${battery_status} #{@pl3} ,}#{?#{e|>=:#{client_width},${cpu_min_width}},${cpu_status} #{@pl3} ,}#{E:@adaptive_status_host_body}"
 metrics_visible="#{||:#{e|>=:#{client_width},${battery_min_width}},#{e|>=:#{client_width},${cpu_min_width}}}"
 t "status-right" "${maintenance}#{?#{e|>=:#{client_width},${time_min_width}},#{E:@adaptive_status_time},}#{?#{e|>=:#{client_width},${date_min_width}},#{E:@adaptive_status_date},}#{?${metrics_visible},#{E:@adaptive_status_metrics},#{E:@adaptive_status_host}}#{?#{@workbench_window_state},#{E:@adaptive_status_agent},#{E:@adaptive_status_host_close}}"
-# The session pill doubles as the prefix indicator: its background flips from
-# the accent colour to $c_info while the prefix key (client_prefix) is held, so
-# C-b / backtick state shows right on the #S label. Self-contained via the
-# built-in client_prefix — no dependency on tmux-prefix-highlight being sourced
-# (or on its placeholder surviving a theme re-apply), which the old
-# #{prefix_highlight} segment here silently did.
-sess_bg="#{?client_prefix,$c_info,$c_accent}"
-t "@adaptive_status_session_full" "#[fg=$c_bg,bg=$sess_bg,bold] #S #[fg=$sess_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
-t "@adaptive_status_session_compact" "#[fg=$c_bg,bg=$sess_bg,bold] #($script_dir/compact-label #{q:session_name} $session_compact_chars) #[fg=$sess_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
+# The session pill also owns global key-mode feedback: disabled bindings are a
+# red OFF warning, prefix is blue, and the ordinary session stays green. Keep
+# OFF ahead of prefix so the more important persistent state always wins.
+off_mode="#{==:#{client_key_table},off}"
+sess_bg="#{?${off_mode},$c_alert,#{?client_prefix,$c_info,$c_accent}}"
+sess_full_content="#{?${off_mode},OFF,#S}"
+sess_compact_content="#{?${off_mode},OFF,#($script_dir/compact-label #{q:session_name} $session_compact_chars)}"
+t "@adaptive_status_session_full" "#[fg=$c_bg,bg=$sess_bg,bold] ${sess_full_content} #[fg=$sess_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
+t "@adaptive_status_session_compact" "#[fg=$c_bg,bg=$sess_bg,bold] ${sess_compact_content} #[fg=$sess_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
 t "status-left" "#{?#{e|>=:#{client_width},${compact_min_width}},#{E:@adaptive_status_session_full},#{E:@adaptive_status_session_compact}}"
 
 t "window-status-format" "#[fg=$c_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}#[fg=$c_fg,bg=$c_bg] #I #{?#{e|>=:#{client_width},${compact_min_width}},#[fg=${mark}]#{@pl1}#[fg=$c_fg] #W ,}#[fg=$c_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
