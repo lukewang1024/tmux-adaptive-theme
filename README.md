@@ -59,6 +59,28 @@ set -g @adaptive_date_format '%a %d %b'
 - **`@adaptive_accent`** — accent color for the session/host pill in `full` mode (default `colour2`).
 - **`@adaptive_appearance`** — `light` | `dark`; normally set for you by the native theme hooks (or `detect-appearance.sh` as a fallback), defaulting to `dark` until first detected. Pin it yourself to force a fixed appearance.
 
+### Context provider interface
+
+The theme exposes a generic right-side context capsule for optional provider
+plugins. It assigns no Agent or workflow meaning to the values. A provider may
+set the following options before the theme loads:
+
+```tmux
+set -g @adaptive_context_state       'working'
+set -g @adaptive_context_label       'build'
+set -g @adaptive_context_icon        '●'
+set -g @adaptive_context_suffix      ' 42%'
+set -g @adaptive_context_range_open  '#[range=user|provider]'
+set -g @adaptive_context_range_close '#[range=]'
+```
+
+`state` recognizes `blocked`, `working`, `done`, and `idle` for semantic
+colors; an empty state hides the context capsule. Values remain recursive tmux
+formats, so a provider can point them at its own window options. A provider
+loaded later can read `@adaptive_theme_dir` and run
+`$dir/tmux-adaptive-theme.tmux` once after registration. Subsequent theme
+repaints preserve the interface without knowing which provider supplied it.
+
 ## Install
 
 With [tpm](https://github.com/tmux-plugins/tpm):
