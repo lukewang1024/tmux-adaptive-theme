@@ -168,6 +168,8 @@ esac
 maintenance=$(get "@adaptive_maintenance" "")
 battery_status=$(get "@adaptive_battery" "")
 cpu_status=$(get "@adaptive_cpu" "$(get "@adaptive_widgets" "")")
+cpu_range_open=$(get "@adaptive_cpu_range_open" "")
+cpu_range_close=$(get "@adaptive_cpu_range_close" "")
 # CPU/battery plugins only interpolate placeholders found directly in
 # status-right. Resolve them before composing the responsive metric sections.
 battery_status=$(printf '%s' "$battery_status" | sed \
@@ -194,7 +196,8 @@ mark="#{?window_bell_flag,$c_alert,#{?window_activity_flag,$c_warn,$c_fg}}"
 # Store complete styled sections in opaque options.  The status format can then
 # conditionally include each whole section without commas inside style strings
 # confusing tmux's conditional-format parser.
-t "@adaptive_status_time" "#[fg=$c_fg,bg=$c_bg,nounderscore,noitalics]${time_format} #{@pl3} "
+t "@adaptive_status_time" "#[fg=$c_fg,bg=$c_bg,nounderscore,noitalics]${time_format} "
+t "@adaptive_status_metadata_separator" "#[fg=$c_fg,bg=$c_bg,nounderscore,noitalics]#{@pl3} "
 t "@adaptive_status_date" "#[fg=$c_fg,bg=$c_bg,nounderscore,noitalics]${date_format} "
 t "@adaptive_status_metrics_lead" "#[fg=$c_sel,bg=$c_bg]#{@pl2}#[fg=$c_fg,bg=$c_sel] "
 # Match Peon Ping's tab-colour semantics: ready/idle green, working amber,
@@ -236,12 +239,15 @@ t "@adaptive_status_actions_right" "#[range=user|${action1_range}]#[fg=$c_dim,bg
 host_content="#{?#{e|>=:#{client_width},${compact_min_width}},#H,#($script_dir/compact-label #{q:host} $host_compact_chars prefix)}"
 t "@adaptive_status_host_body" "${host_range_open}#[fg=$c_fg,bg=$c_sel,bold] ${host_prefix}${host_content} ${host_range_close}"
 t "@adaptive_status_host" "#[fg=$c_sel,bg=$c_bg]#{@pl2}#{E:@adaptive_status_host_body}"
-t "@adaptive_status_metrics" "#{E:@adaptive_status_metrics_lead}#{?#{e|>=:#{client_width},${battery_min_width}},${battery_status} #{@pl3} ,}#{?#{e|>=:#{client_width},${cpu_min_width}},${cpu_status} #{@pl3} ,}#{E:@adaptive_status_host_body}"
+t "@adaptive_status_metrics" "#{E:@adaptive_status_metrics_lead}#{?#{e|>=:#{client_width},${battery_min_width}},${battery_status} #{@pl3} ,}#{?#{e|>=:#{client_width},${cpu_min_width}},${cpu_range_open}${cpu_status}${cpu_range_close} #[fg=$c_dim]#{@pl3}#[fg=$c_fg],}#{E:@adaptive_status_host_body}"
 metrics_visible="#{||:#{e|>=:#{client_width},${battery_min_width}},#{e|>=:#{client_width},${cpu_min_width}}}"
 context_open="#{E:@adaptive_status_context_open}"
 empty_context="#{E:@adaptive_status_host_close}"
 if [ -n "$action1_icon" ]; then action_strip="#{E:@adaptive_status_actions_right}"; else action_strip=""; fi
-t "status-right" "${maintenance}#{?#{e|>=:#{client_width},${time_min_width}},#{E:@adaptive_status_time},}#{?#{e|>=:#{client_width},${date_min_width}},#{E:@adaptive_status_date},}#{?${metrics_visible},#{E:@adaptive_status_metrics},#{E:@adaptive_status_host}}${action_strip}#{?${context_state},${context_open}${context_suffix}#{E:@adaptive_status_context_close},${empty_context}}"
+time_visible="#{e|>=:#{client_width},${time_min_width}}"
+date_visible="#{e|>=:#{client_width},${date_min_width}}"
+metadata_pair_visible="#{&&:${time_visible},${date_visible}}"
+t "status-right" "${maintenance}#{?${time_visible},#{E:@adaptive_status_time},}#{?${metadata_pair_visible},#{E:@adaptive_status_metadata_separator},}#{?${date_visible},#{E:@adaptive_status_date},}#{?${metrics_visible},#{E:@adaptive_status_metrics},#{E:@adaptive_status_host}}${action_strip}#{?${context_state},${context_open}${context_suffix}#{E:@adaptive_status_context_close},${empty_context}}"
 # The session pill also owns global key-mode feedback: disabled bindings are a
 # red OFF warning, prefix is blue, and the ordinary session stays green. Keep
 # OFF ahead of prefix so the more important persistent state always wins.

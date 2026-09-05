@@ -21,6 +21,10 @@ tmux -L "$socket" set-option -g @adaptive_session_range_close '#[range=]'
 tmux -L "$socket" set-option -g @adaptive_host_icon H
 tmux -L "$socket" set-option -g @adaptive_host_range_open '#[range=user|host]'
 tmux -L "$socket" set-option -g @adaptive_host_range_close '#[range=]'
+tmux -L "$socket" set-option -g @adaptive_cpu C
+tmux -L "$socket" set-option -g @adaptive_cpu_min_width 0
+tmux -L "$socket" set-option -g @adaptive_cpu_range_open '#[range=user|cpu]'
+tmux -L "$socket" set-option -g @adaptive_cpu_range_close '#[range=]'
 tmux -L "$socket" set-option -g @adaptive_action_1_icon A
 tmux -L "$socket" set-option -g @adaptive_action_1_range action_one
 tmux -L "$socket" set-option -g @adaptive_action_2_icon B
@@ -56,8 +60,8 @@ assert_context() {
     printf 'action and context ranges were not rendered in order: %s\n' "$rendered_right" >&2
     exit 1
   esac
-  case $rendered_right in *'range=user|host'*) ;; *)
-    printf 'host range was not rendered: %s\n' "$rendered_right" >&2
+  case $rendered_right in *'range=user|cpu'*'range=user|host'*) ;; *)
+    printf 'CPU and host ranges were not rendered in order: %s\n' "$rendered_right" >&2
     exit 1
   esac
 }
