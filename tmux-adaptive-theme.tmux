@@ -226,7 +226,7 @@ t "@adaptive_status_context_close" " ${context_range_close}"
 t "@adaptive_status_context_standalone" "${context_range_open}#[fg=${context_bg},bg=$c_bg,nobold]#{@pl2}#[fg=$c_bg,bg=${context_bg},bold] ${context_content}${context_suffix} ${context_range_close}"
 t "@adaptive_status_host_close" "#[fg=$c_accent,bg=$c_sel,nobold]#{@pl2}#[fg=$c_bg,bg=$c_accent] ${context_icon} "
 t "@adaptive_status_empty_context_standalone" "#[fg=$c_accent,bg=$c_bg,nobold]#{@pl2}#[fg=$c_bg,bg=$c_accent] ${context_icon} "
-t "@adaptive_status_actions_right" "#[range=user|${action1_range}]#[fg=$c_dim,bg=$c_sel,nobold]#{@pl3}#[fg=$c_fg]  ${action1_icon}  #[range=]#[range=user|${action2_range}]#[fg=$c_dim,bg=$c_sel]#{@pl3}#[fg=$c_fg]  ${action2_icon}  #[range=]#[range=user|${action3_range}]#[fg=$c_dim,bg=$c_sel]#{@pl3}#[fg=$c_fg]  ${action3_icon}  #[range=]"
+t "@adaptive_status_actions_right" "#[range=user|${action1_range}]#[fg=$c_dim,bg=$c_sel,nobold]#{@pl3}#[fg=$c_fg] ${action1_icon} #[range=]#[range=user|${action2_range}]#[fg=$c_dim,bg=$c_sel]#{@pl3}#[fg=$c_fg] ${action2_icon} #[range=]#[range=user|${action3_range}]#[fg=$c_dim,bg=$c_sel]#{@pl3}#[fg=$c_fg] ${action3_icon} #[range=]"
 # Agent is the non-negotiable tail.  Every optional tier before it includes its
 # own opening separator, so a hidden/truncated tier can never leave a loose grey
 # triangle behind.  Below host_min_width the complete right side is only the
@@ -258,16 +258,16 @@ t "status-left" "#{?#{e|>=:#{client_width},${compact_min_width}},#{E:@adaptive_s
 t "window-status-format" "#[fg=$c_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}#[fg=$c_fg,bg=$c_bg] #I #{?#{e|>=:#{client_width},${compact_min_width}},#[fg=${mark}]#{@pl1}#[fg=$c_fg] #W ,}#[fg=$c_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
 t "window-status-current-format" "#[fg=$c_bg,bg=$c_sel,nobold,nounderscore,noitalics]#{@pl0}#[fg=$c_fg,bg=$c_sel,nobold] #I #{?#{e|>=:#{client_width},${compact_min_width}},#{@pl1} #W ,}#[fg=$c_sel,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
 
-# The widgets in status-right come from other plugins (battery/cpu/
-# prefix-highlight) that tpm may source after this theme; re-run them so their
+# The widgets in status-right come from battery/cpu plugins that tpm may source
+# after this theme; re-run them so their
 # format placeholders resolve, then refresh each client so a re-apply (e.g. from
 # an appearance watcher) repaints immediately instead of on the next attach.
 # TMUX_PLUGIN_MANAGER_PATH is commonly set with a literal leading '~' (tmux
 # set-environment performs no tilde expansion), and the quoted -x test below
 # won't expand it either — so without this the test silently fails and the
-# battery/cpu/prefix widgets never get re-sourced, leaving their placeholders
+# battery/cpu widgets never get re-sourced, leaving their placeholders
 # (#{cpu_percentage}, …) raw and rendering empty after any theme re-apply.
-for p in tmux-prefix-highlight/prefix_highlight tmux-battery/battery tmux-cpu/cpu; do
+for p in tmux-battery/battery tmux-cpu/cpu; do
    [ -x "$plug/$p.tmux" ] && "$plug/$p.tmux" >/dev/null 2>&1
 done
 for c in $(tmux list-clients -F '#{client_name}' 2>/dev/null); do
