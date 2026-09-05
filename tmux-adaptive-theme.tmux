@@ -226,7 +226,7 @@ t "@adaptive_status_context_close" " ${context_range_close}"
 t "@adaptive_status_context_standalone" "${context_range_open}#[fg=${context_bg},bg=$c_bg,nobold]#{@pl2}#[fg=$c_bg,bg=${context_bg},bold] ${context_content}${context_suffix} ${context_range_close}"
 t "@adaptive_status_host_close" "#[fg=$c_accent,bg=$c_sel,nobold]#{@pl2}#[fg=$c_bg,bg=$c_accent] ${context_icon} "
 t "@adaptive_status_empty_context_standalone" "#[fg=$c_accent,bg=$c_bg,nobold]#{@pl2}#[fg=$c_bg,bg=$c_accent] ${context_icon} "
-t "@adaptive_status_actions_right" "#[range=user|${action1_range}]#[fg=$c_dim,bg=$c_sel,nobold]#{@pl3}#[fg=$c_fg] ${action1_icon} #[range=]#[range=user|${action2_range}]#[fg=$c_dim,bg=$c_sel]#{@pl3}#[fg=$c_fg] ${action2_icon} #[range=]#[range=user|${action3_range}]#[fg=$c_dim,bg=$c_sel]#{@pl3}#[fg=$c_fg] ${action3_icon} #[range=]"
+t "@adaptive_status_actions_right" "#[range=user|${action1_range}]#[fg=$c_dim,bg=$c_sel,nobold]#{@pl3}#[fg=$c_fg]  ${action1_icon}  #[range=]#[range=user|${action2_range}]#[fg=$c_dim,bg=$c_sel]#{@pl3}#[fg=$c_fg]  ${action2_icon}  #[range=]#[range=user|${action3_range}]#[fg=$c_dim,bg=$c_sel]#{@pl3}#[fg=$c_fg]  ${action3_icon}  #[range=]"
 # Agent is the non-negotiable tail.  Every optional tier before it includes its
 # own opening separator, so a hidden/truncated tier can never leave a loose grey
 # triangle behind.  Below host_min_width the complete right side is only the
@@ -246,7 +246,8 @@ t "status-right" "${maintenance}#{?#{e|>=:#{client_width},${time_min_width}},#{E
 # red OFF warning, prefix is blue, and the ordinary session stays green. Keep
 # OFF ahead of prefix so the more important persistent state always wins.
 off_mode="#{==:#{client_key_table},off}"
-sess_bg="#{?${off_mode},$c_alert,#{?client_prefix,$c_info,$c_accent}}"
+prefix_mode="#{==:#{client_key_table},prefix}"
+sess_bg="#{?${off_mode},$c_alert,#{?${prefix_mode},$c_info,$c_accent}}"
 sess_full_content="#{?${off_mode},OFF,#S}"
 sess_compact_content="#{?${off_mode},OFF,#($script_dir/compact-label #{q:session_name} $session_compact_chars)}"
 session_tail="#[fg=$sess_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
