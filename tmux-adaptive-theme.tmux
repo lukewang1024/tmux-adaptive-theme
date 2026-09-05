@@ -77,10 +77,12 @@ if [ "$appearance" = light ]; then
    # Atom One Light
    c_bg="#fafafa"; c_fg="#383a42"; c_sel="#e5e5e6"; c_dim="#a0a1a7"
    c_accent="#50a14f"; c_warn="#c18401"; c_alert="#e45649"; c_info="#4078f2"
+   c_action1="#a626a4"; c_action2="#0184bc"; c_action3="#986801"
 else
    # One Dark
    c_bg="#282c34"; c_fg="#aab2bf"; c_sel="#3e4452"; c_dim="#5c6370"
    c_accent="#98c379"; c_warn="#e5c07b"; c_alert="#e06c75"; c_info="#61afef"
+   c_action1="#c678dd"; c_action2="#56b6c2"; c_action3="#d19a66"
 fi
 
 # full mode: take the accent + semantic warn/alert from the terminal's own ANSI
@@ -206,6 +208,14 @@ context_icon=$(get "@adaptive_context_icon" "#{@adaptive_agent_icon}")
 context_suffix=$(get "@adaptive_context_suffix" "")
 context_range_open=$(get "@adaptive_context_range_open" "")
 context_range_close=$(get "@adaptive_context_range_close" "")
+action1_icon=$(get "@adaptive_action_1_icon" "")
+action2_icon=$(get "@adaptive_action_2_icon" "")
+action3_icon=$(get "@adaptive_action_3_icon" "")
+action1_range=$(get "@adaptive_action_1_range" "")
+action2_range=$(get "@adaptive_action_2_range" "")
+action3_range=$(get "@adaptive_action_3_range" "")
+session_range_open=$(get "@adaptive_session_range_open" "")
+session_range_close=$(get "@adaptive_session_range_close" "")
 context_bg="#{?#{==:${context_state},blocked},$c_alert,#{?#{==:${context_state},working},$c_warn,#{?#{==:${context_state},done},$c_info,#{?#{==:${context_state},idle},$c_accent,$c_dim}}}}"
 context_mark="#{?#{==:${context_state},blocked},!,#{?#{==:${context_state},working},●,#{?#{==:${context_state},done},✓,#{?#{==:${context_state},idle},○,?}}}}"
 context_content="${context_icon} #{?#{e|>=:#{client_width},${compact_min_width}},${context_label},${context_mark}}"
@@ -214,13 +224,14 @@ t "@adaptive_status_context_close" " ${context_range_close}"
 t "@adaptive_status_context_standalone" "${context_range_open}#[fg=${context_bg},bg=$c_bg,nobold]#{@pl2}#[fg=$c_bg,bg=${context_bg},bold] ${context_content}${context_suffix} ${context_range_close}"
 t "@adaptive_status_host_close" "#[fg=$c_accent,bg=$c_sel,nobold]#{@pl2}#[fg=$c_bg,bg=$c_accent] ${context_icon} "
 t "@adaptive_status_empty_context_standalone" "#[fg=$c_accent,bg=$c_bg,nobold]#{@pl2}#[fg=$c_bg,bg=$c_accent] ${context_icon} "
+t "@adaptive_status_actions_left" "#[range=user|${action1_range}]#[fg=$c_bg,bg=$c_action1] ${action1_icon} #[range=]#[fg=$c_action1,bg=$c_action2]#{@pl0}#[range=user|${action2_range}]#[fg=$c_bg,bg=$c_action2] ${action2_icon} #[range=]#[fg=$c_action2,bg=$c_action3]#{@pl0}#[range=user|${action3_range}]#[fg=$c_bg,bg=$c_action3] ${action3_icon} #[range=]#[fg=$c_action3,bg=$c_bg]#{@pl0}"
 # Agent is the non-negotiable tail.  Every optional tier before it includes its
 # own opening separator, so a hidden/truncated tier can never leave a loose grey
 # triangle behind.  Below host_min_width the complete right side is only the
 # agent capsule; session/window/host compaction therefore creates space for
 # state instead of allowing tmux to crop it away. Host remains present at every
 # width, using the same middle truncation as the session in compact mode.
-host_content="#{?#{e|>=:#{client_width},${compact_min_width}},#H,#($script_dir/compact-label #{q:host} $host_compact_chars)}"
+host_content="#{?#{e|>=:#{client_width},${compact_min_width}},#H,#($script_dir/compact-label #{q:host} $host_compact_chars prefix)}"
 t "@adaptive_status_host_body" "#[fg=$c_fg,bg=$c_sel,bold] ${host_content} "
 t "@adaptive_status_host" "#[fg=$c_sel,bg=$c_bg]#{@pl2}#{E:@adaptive_status_host_body}"
 t "@adaptive_status_metrics" "#{E:@adaptive_status_metrics_lead}#{?#{e|>=:#{client_width},${battery_min_width}},${battery_status} #{@pl3} ,}#{?#{e|>=:#{client_width},${cpu_min_width}},${cpu_status} #{@pl3} ,}#{E:@adaptive_status_host_body}"
@@ -233,8 +244,13 @@ off_mode="#{==:#{client_key_table},off}"
 sess_bg="#{?${off_mode},$c_alert,#{?client_prefix,$c_info,$c_accent}}"
 sess_full_content="#{?${off_mode},OFF,#S}"
 sess_compact_content="#{?${off_mode},OFF,#($script_dir/compact-label #{q:session_name} $session_compact_chars)}"
-t "@adaptive_status_session_full" "#[fg=$c_bg,bg=$sess_bg,bold] ${sess_full_content} #[fg=$sess_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
-t "@adaptive_status_session_compact" "#[fg=$c_bg,bg=$sess_bg,bold] ${sess_compact_content} #[fg=$sess_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
+if [ -n "$action1_icon" ]; then
+   session_tail="#[fg=$sess_bg,bg=$c_action1,nobold,nounderscore,noitalics]#{@pl0}#{E:@adaptive_status_actions_left}"
+else
+   session_tail="#[fg=$sess_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
+fi
+t "@adaptive_status_session_full" "${session_range_open}#[fg=$c_bg,bg=$sess_bg,bold] ${sess_full_content} ${session_range_close}${session_tail}"
+t "@adaptive_status_session_compact" "${session_range_open}#[fg=$c_bg,bg=$sess_bg,bold] ${sess_compact_content} ${session_range_close}${session_tail}"
 t "status-left" "#{?#{e|>=:#{client_width},${compact_min_width}},#{E:@adaptive_status_session_full},#{E:@adaptive_status_session_compact}}"
 
 t "window-status-format" "#[fg=$c_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}#[fg=$c_fg,bg=$c_bg] #I #{?#{e|>=:#{client_width},${compact_min_width}},#[fg=${mark}]#{@pl1}#[fg=$c_fg] #W ,}#[fg=$c_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"

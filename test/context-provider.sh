@@ -16,6 +16,14 @@ tmux -L "$socket" set-option -g @adaptive_context_label '#{@provider_label}'
 tmux -L "$socket" set-option -g @adaptive_context_suffix ' USAGE'
 tmux -L "$socket" set-option -g @adaptive_context_range_open '#[range=user|provider]'
 tmux -L "$socket" set-option -g @adaptive_context_range_close '#[range=]'
+tmux -L "$socket" set-option -g @adaptive_session_range_open '#[range=user|prefix]'
+tmux -L "$socket" set-option -g @adaptive_session_range_close '#[range=]'
+tmux -L "$socket" set-option -g @adaptive_action_1_icon A
+tmux -L "$socket" set-option -g @adaptive_action_1_range action_one
+tmux -L "$socket" set-option -g @adaptive_action_2_icon B
+tmux -L "$socket" set-option -g @adaptive_action_2_range action_two
+tmux -L "$socket" set-option -g @adaptive_action_3_icon C
+tmux -L "$socket" set-option -g @adaptive_action_3_range action_three
 tmux -L "$socket" set-window-option @provider_state working
 tmux -L "$socket" set-window-option @provider_label CODEX
 
@@ -33,6 +41,15 @@ assert_context() {
   esac
   case $rendered in *'range=user|provider'*) ;; *)
     printf 'context provider range was not rendered: %s\n' "$rendered" >&2
+    exit 1
+  esac
+  rendered_left=$(tmux -L "$socket" display-message -p '#{E:status-left}')
+  case $rendered_left in *'range=user|prefix'*) ;; *)
+    printf 'session range was not rendered: %s\n' "$rendered_left" >&2
+    exit 1
+  esac
+  case $rendered_left in *'range=user|prefix'*'range=user|action_one'*'range=user|action_two'*'range=user|action_three'*) ;; *)
+    printf 'session and action ranges were not rendered in order: %s\n' "$rendered_left" >&2
     exit 1
   esac
 }
