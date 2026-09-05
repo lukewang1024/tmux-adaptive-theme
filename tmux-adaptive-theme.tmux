@@ -77,12 +77,10 @@ if [ "$appearance" = light ]; then
    # Atom One Light
    c_bg="#fafafa"; c_fg="#383a42"; c_sel="#e5e5e6"; c_dim="#a0a1a7"
    c_accent="#50a14f"; c_warn="#c18401"; c_alert="#e45649"; c_info="#4078f2"
-   c_action1="#a626a4"; c_action2="#0184bc"; c_action3="#986801"
 else
    # One Dark
    c_bg="#282c34"; c_fg="#aab2bf"; c_sel="#3e4452"; c_dim="#5c6370"
    c_accent="#98c379"; c_warn="#e5c07b"; c_alert="#e06c75"; c_info="#61afef"
-   c_action1="#c678dd"; c_action2="#56b6c2"; c_action3="#d19a66"
 fi
 
 # full mode: take the accent + semantic warn/alert from the terminal's own ANSI
@@ -224,7 +222,7 @@ t "@adaptive_status_context_close" " ${context_range_close}"
 t "@adaptive_status_context_standalone" "${context_range_open}#[fg=${context_bg},bg=$c_bg,nobold]#{@pl2}#[fg=$c_bg,bg=${context_bg},bold] ${context_content}${context_suffix} ${context_range_close}"
 t "@adaptive_status_host_close" "#[fg=$c_accent,bg=$c_sel,nobold]#{@pl2}#[fg=$c_bg,bg=$c_accent] ${context_icon} "
 t "@adaptive_status_empty_context_standalone" "#[fg=$c_accent,bg=$c_bg,nobold]#{@pl2}#[fg=$c_bg,bg=$c_accent] ${context_icon} "
-t "@adaptive_status_actions_left" "#[range=user|${action1_range}]#[fg=$c_bg,bg=$c_action1] ${action1_icon} #[range=]#[fg=$c_action1,bg=$c_action2]#{@pl0}#[range=user|${action2_range}]#[fg=$c_bg,bg=$c_action2] ${action2_icon} #[range=]#[fg=$c_action2,bg=$c_action3]#{@pl0}#[range=user|${action3_range}]#[fg=$c_bg,bg=$c_action3] ${action3_icon} #[range=]#[fg=$c_action3,bg=$c_bg]#{@pl0}"
+t "@adaptive_status_actions_right" "#[range=user|${action1_range}]#[fg=$c_dim,bg=$c_sel,nobold]#{@pl3}#[fg=$c_fg] ${action1_icon} #[range=]#[range=user|${action2_range}]#[fg=$c_dim,bg=$c_sel]#{@pl3}#[fg=$c_fg] ${action2_icon} #[range=]#[range=user|${action3_range}]#[fg=$c_dim,bg=$c_sel]#{@pl3}#[fg=$c_fg] ${action3_icon} #[range=]"
 # Agent is the non-negotiable tail.  Every optional tier before it includes its
 # own opening separator, so a hidden/truncated tier can never leave a loose grey
 # triangle behind.  Below host_min_width the complete right side is only the
@@ -236,7 +234,10 @@ t "@adaptive_status_host_body" "#[fg=$c_fg,bg=$c_sel,bold] ${host_content} "
 t "@adaptive_status_host" "#[fg=$c_sel,bg=$c_bg]#{@pl2}#{E:@adaptive_status_host_body}"
 t "@adaptive_status_metrics" "#{E:@adaptive_status_metrics_lead}#{?#{e|>=:#{client_width},${battery_min_width}},${battery_status} #{@pl3} ,}#{?#{e|>=:#{client_width},${cpu_min_width}},${cpu_status} #{@pl3} ,}#{E:@adaptive_status_host_body}"
 metrics_visible="#{||:#{e|>=:#{client_width},${battery_min_width}},#{e|>=:#{client_width},${cpu_min_width}}}"
-t "status-right" "${maintenance}#{?#{e|>=:#{client_width},${time_min_width}},#{E:@adaptive_status_time},}#{?#{e|>=:#{client_width},${date_min_width}},#{E:@adaptive_status_date},}#{?${metrics_visible},#{E:@adaptive_status_metrics},#{E:@adaptive_status_host}}#{?${context_state},#{E:@adaptive_status_context_open}${context_suffix}#{E:@adaptive_status_context_close},#{E:@adaptive_status_host_close}}"
+context_open="#{E:@adaptive_status_context_open}"
+empty_context="#{E:@adaptive_status_host_close}"
+if [ -n "$action1_icon" ]; then action_strip="#{E:@adaptive_status_actions_right}"; else action_strip=""; fi
+t "status-right" "${maintenance}#{?#{e|>=:#{client_width},${time_min_width}},#{E:@adaptive_status_time},}#{?#{e|>=:#{client_width},${date_min_width}},#{E:@adaptive_status_date},}#{?${metrics_visible},#{E:@adaptive_status_metrics},#{E:@adaptive_status_host}}${action_strip}#{?${context_state},${context_open}${context_suffix}#{E:@adaptive_status_context_close},${empty_context}}"
 # The session pill also owns global key-mode feedback: disabled bindings are a
 # red OFF warning, prefix is blue, and the ordinary session stays green. Keep
 # OFF ahead of prefix so the more important persistent state always wins.
@@ -244,11 +245,7 @@ off_mode="#{==:#{client_key_table},off}"
 sess_bg="#{?${off_mode},$c_alert,#{?client_prefix,$c_info,$c_accent}}"
 sess_full_content="#{?${off_mode},OFF,#S}"
 sess_compact_content="#{?${off_mode},OFF,#($script_dir/compact-label #{q:session_name} $session_compact_chars)}"
-if [ -n "$action1_icon" ]; then
-   session_tail="#[fg=$sess_bg,bg=$c_action1,nobold,nounderscore,noitalics]#{@pl0}#{E:@adaptive_status_actions_left}"
-else
-   session_tail="#[fg=$sess_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
-fi
+session_tail="#[fg=$sess_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
 t "@adaptive_status_session_full" "${session_range_open}#[fg=$c_bg,bg=$sess_bg,bold] ${sess_full_content} ${session_range_close}${session_tail}"
 t "@adaptive_status_session_compact" "${session_range_open}#[fg=$c_bg,bg=$sess_bg,bold] ${sess_compact_content} ${session_range_close}${session_tail}"
 t "status-left" "#{?#{e|>=:#{client_width},${compact_min_width}},#{E:@adaptive_status_session_full},#{E:@adaptive_status_session_compact}}"

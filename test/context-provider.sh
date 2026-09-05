@@ -48,8 +48,9 @@ assert_context() {
     printf 'session range was not rendered: %s\n' "$rendered_left" >&2
     exit 1
   esac
-  case $rendered_left in *'range=user|prefix'*'range=user|action_one'*'range=user|action_two'*'range=user|action_three'*) ;; *)
-    printf 'session and action ranges were not rendered in order: %s\n' "$rendered_left" >&2
+  rendered_right=$(tmux -L "$socket" display-message -p '#{E:status-right}')
+  case $rendered_right in *'range=user|action_one'*'range=user|action_two'*'range=user|action_three'*'range=user|provider'*) ;; *)
+    printf 'action and context ranges were not rendered in order: %s\n' "$rendered_right" >&2
     exit 1
   esac
 }
