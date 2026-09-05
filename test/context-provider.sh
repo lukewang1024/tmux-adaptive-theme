@@ -18,6 +18,9 @@ tmux -L "$socket" set-option -g @adaptive_context_range_open '#[range=user|provi
 tmux -L "$socket" set-option -g @adaptive_context_range_close '#[range=]'
 tmux -L "$socket" set-option -g @adaptive_session_range_open '#[range=user|prefix]'
 tmux -L "$socket" set-option -g @adaptive_session_range_close '#[range=]'
+tmux -L "$socket" set-option -g @adaptive_host_icon H
+tmux -L "$socket" set-option -g @adaptive_host_range_open '#[range=user|host]'
+tmux -L "$socket" set-option -g @adaptive_host_range_close '#[range=]'
 tmux -L "$socket" set-option -g @adaptive_action_1_icon A
 tmux -L "$socket" set-option -g @adaptive_action_1_range action_one
 tmux -L "$socket" set-option -g @adaptive_action_2_icon B
@@ -51,6 +54,10 @@ assert_context() {
   rendered_right=$(tmux -L "$socket" display-message -p '#{E:status-right}')
   case $rendered_right in *'range=user|action_one'*'range=user|action_two'*'range=user|action_three'*'range=user|provider'*) ;; *)
     printf 'action and context ranges were not rendered in order: %s\n' "$rendered_right" >&2
+    exit 1
+  esac
+  case $rendered_right in *'range=user|host'*) ;; *)
+    printf 'host range was not rendered: %s\n' "$rendered_right" >&2
     exit 1
   esac
 }

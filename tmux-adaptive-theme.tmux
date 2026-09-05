@@ -214,6 +214,9 @@ action2_range=$(get "@adaptive_action_2_range" "")
 action3_range=$(get "@adaptive_action_3_range" "")
 session_range_open=$(get "@adaptive_session_range_open" "")
 session_range_close=$(get "@adaptive_session_range_close" "")
+host_icon=$(get "@adaptive_host_icon" "")
+host_range_open=$(get "@adaptive_host_range_open" "")
+host_range_close=$(get "@adaptive_host_range_close" "")
 context_bg="#{?#{==:${context_state},blocked},$c_alert,#{?#{==:${context_state},working},$c_warn,#{?#{==:${context_state},done},$c_info,#{?#{==:${context_state},idle},$c_accent,$c_dim}}}}"
 context_mark="#{?#{==:${context_state},blocked},!,#{?#{==:${context_state},working},●,#{?#{==:${context_state},done},✓,#{?#{==:${context_state},idle},○,?}}}}"
 context_content="${context_icon} #{?#{e|>=:#{client_width},${compact_min_width}},${context_label},${context_mark}}"
@@ -230,7 +233,7 @@ t "@adaptive_status_actions_right" "#[range=user|${action1_range}]#[fg=$c_dim,bg
 # state instead of allowing tmux to crop it away. Host remains present at every
 # width, using the same middle truncation as the session in compact mode.
 host_content="#{?#{e|>=:#{client_width},${compact_min_width}},#H,#($script_dir/compact-label #{q:host} $host_compact_chars prefix)}"
-t "@adaptive_status_host_body" "#[fg=$c_fg,bg=$c_sel,bold] ${host_content} "
+t "@adaptive_status_host_body" "${host_range_open}#[fg=$c_fg,bg=$c_sel,bold] ${host_icon}${host_content} ${host_range_close}"
 t "@adaptive_status_host" "#[fg=$c_sel,bg=$c_bg]#{@pl2}#{E:@adaptive_status_host_body}"
 t "@adaptive_status_metrics" "#{E:@adaptive_status_metrics_lead}#{?#{e|>=:#{client_width},${battery_min_width}},${battery_status} #{@pl3} ,}#{?#{e|>=:#{client_width},${cpu_min_width}},${cpu_status} #{@pl3} ,}#{E:@adaptive_status_host_body}"
 metrics_visible="#{||:#{e|>=:#{client_width},${battery_min_width}},#{e|>=:#{client_width},${cpu_min_width}}}"
