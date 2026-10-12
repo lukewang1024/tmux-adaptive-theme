@@ -146,8 +146,10 @@ tw "window-status-activity-style" "fg=$c_fg,bg=$c_bg,none"
 tw "window-status-bell-style" "fg=$c_fg,bg=$c_bg,none"
 tw "window-status-separator" ""
 
-t "window-style" "fg=$c_dim"
-t "window-active-style" "fg=$c_fg"
+# OSC 11 replies use the pane's default background. Leaving it unset lets
+# tmux borrow another attached client's background, even in the opposite mode.
+t "window-style" "fg=$c_dim,bg=$c_bg"
+t "window-active-style" "fg=$c_fg,bg=$c_bg"
 
 t "pane-border-style" "fg=$c_fg,bg=$c_bg"
 t "pane-active-border-style" "fg=$c_accent,bg=$c_bg"

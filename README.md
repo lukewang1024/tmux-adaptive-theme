@@ -13,6 +13,11 @@ Requires a terminal with [True Color](https://en.wikipedia.org/wiki/Color_depth#
 
 Either way the palette follows the terminal's light/dark background — see [Appearance detection](#appearance-detection).
 
+Pane backgrounds also follow the resolved palette. This makes tmux's OSC 11
+background replies agree with its appearance when several terminals with
+different themes attach to the same server. Applications such as Codex and
+TraeX therefore detect the same light/dark mode as the status bar.
+
 ### Appearance detection
 
 Light vs dark is read from the terminal's real theme, not the OS setting. There are two paths, and the theme is happy with whichever your terminal supports.
