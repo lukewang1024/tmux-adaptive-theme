@@ -54,15 +54,33 @@ Set these in your `.tmux.conf`:
 
 ```tmux
 set -g @adaptive_mode        full        # light | full
-set -g @adaptive_widgets     "#{battery_icon} #{battery_percentage}  CPU #{cpu_percentage}"
+set -g @adaptive_cpu         "CPU #{cpu_percentage}"
+set -g @adaptive_time_enabled on
 set -g @adaptive_time_format '%R'
+set -g @adaptive_date_enabled on
 set -g @adaptive_date_format '%a %d %b'
+set -g @adaptive_battery_enabled on
+set -g @adaptive_battery     "#{battery_icon} #{battery_percentage}"
 ```
 
-- **`@adaptive_widgets`** — content shown on the right, before the host pill (default empty). Placeholders like `#{battery_percentage}` are provided by other plugins (e.g. [tmux-battery](https://github.com/tmux-plugins/tmux-battery), [tmux-cpu](https://github.com/tmux-plugins/tmux-cpu)).
+- **`@adaptive_cpu`** — CPU content before the host pill (default empty; `@adaptive_widgets` remains a fallback). `#{cpu_percentage}` and `#{cpu_icon}` use [tmux-cpu](https://github.com/tmux-plugins/tmux-cpu).
+- **`@adaptive_time_enabled`**, **`@adaptive_date_enabled`**, **`@adaptive_battery_enabled`** — independent `on` / `off` switches, all defaulting to `off`.
 - **`@adaptive_time_format`** / **`@adaptive_date_format`** — [strftime](http://man7.org/linux/man-pages/man3/strftime.3.html) formats (defaults `%R`, `%d/%m/%Y`).
+- **`@adaptive_battery`** — battery content (default empty). `#{battery_icon}` and `#{battery_percentage}` require [tmux-battery](https://github.com/tmux-plugins/tmux-battery); custom tmux formats or `#(...)` producers also work. Empty content adds no item.
 - **`@adaptive_accent`** — accent color for the session/host pill in `full` mode (default `colour2`).
 - **`@adaptive_appearance`** — `light` | `dark`; normally set for you by the native theme hooks (or `detect-appearance.sh` as a fallback), defaulting to `dark` until first detected. Pin it yourself to force a fixed appearance.
+
+Time, date and battery live in separate `modules/*.sh` files and load only when
+enabled. They use the same layout compiler as the other status items and remain
+present in both full and compact layouts. Disabled modules take no space, add no
+separator and do not start producers. `@adaptive_maintenance` stays unconditional.
+After changing module switches or content, reapply `tmux-adaptive-theme.tmux`.
+
+The old `@adaptive_time_min_width`, `@adaptive_date_min_width` and
+`@adaptive_battery_min_width` options are no longer read. Replace threshold-based
+hiding (such as `9999`) with `off`; set `on` explicitly for modules you want to
+retain. CPU keeps its provider's existing width policy. Run
+`python3 test/status-modules.py` to check module combinations and reloads.
 
 ### Context provider interface
 
@@ -85,6 +103,42 @@ formats, so a provider can point them at its own window options. A provider
 loaded later can read `@adaptive_theme_dir` and run
 `$dir/tmux-adaptive-theme.tmux` once after registration. Subsequent theme
 repaints preserve the interface without knowing which provider supplied it.
+
+Action providers may set `@adaptive_action_1_visible` through
+`@adaptive_action_3_visible` to a tmux format returning `1` or `0` (default `1`).
+The condition wraps the whole item, including its separator and mouse range,
+so a hidden action leaves no clickable blank space. Pane-local options and
+`client_width` are evaluated at render time without reapplying the theme.
+
+
+`@adaptive_context_visible` may override context visibility with a tmux boolean
+format. `@adaptive_context_suffix` stays inside the status surface; optional
+`@adaptive_usage_range_open` and `@adaptive_usage_range_close` give that suffix
+an independent mouse target.
+
+The layout compiler in `lib/status-layout.sh` accepts ordered items with content,
+visibility, surface colours and mouse ranges. It generates native tmux formats
+that derive each separator from the previous visible surface. No external
+renderer runs during a status refresh. Separators and closing caps are outside
+all mouse regions. Run `python3 test/status-layout.py` to verify colour adjacency
+and hit regions across light/dark and hidden-item combinations.
+
+The left group has no added blank gap before the window tabs. Layout density
+is chosen from the actual display width of all window names and the fixed
+controls, per client. Under pressure, Session and Host shorten, CPU uses the
+provider's optional `@adaptive_cpu_compact`, and Agent status drops its label
+and usage. Window names then truncate with an ellipsis; narrower tabs show
+only their index. CJK names use terminal display cells. Enabled metadata modules
+stay visible; CPU keeps its minimum-width setting.
+
+The session label keeps its key-mode colours: normal uses the accent background,
+prefix uses blue, and OFF uses red, independently of Sidebar visibility.
+
+Action providers can set `@adaptive_action_N_active` to a boolean format.
+Active controls use the accent foreground and bold weight; inactive controls
+use the dim foreground, with identical geometry and click ranges. Native tmux status
+styles have no hover state; this theme does not poll pointer positions.
+Run `python3 test/responsive-width.py` for the width-pressure checks.
 
 ## Install
 

@@ -168,103 +168,120 @@ case "$plug" in
    "~/"*) plug="$HOME/${plug#"~/"}" ;;
 esac
 maintenance=$(get "@adaptive_maintenance" "")
-battery_status=$(get "@adaptive_battery" "")
 cpu_status=$(get "@adaptive_cpu" "$(get "@adaptive_widgets" "")")
 cpu_range_open=$(get "@adaptive_cpu_range_open" "")
 cpu_range_close=$(get "@adaptive_cpu_range_close" "")
-# CPU/battery plugins only interpolate placeholders found directly in
+# CPU plugins only interpolate placeholders found directly in
 # status-right. Resolve them before composing the responsive metric sections.
-battery_status=$(printf '%s' "$battery_status" | sed \
-   -e "s|#{battery_icon}|#($plug/tmux-battery/scripts/battery_icon.sh)|g" \
-   -e "s|#{battery_percentage}|#($plug/tmux-battery/scripts/battery_percentage.sh)|g")
 cpu_status=$(printf '%s' "$cpu_status" | sed \
    -e "s|#{cpu_percentage}|#($plug/tmux-cpu/scripts/cpu_percentage.sh)|g" \
    -e "s|#{cpu_icon}|#($plug/tmux-cpu/scripts/cpu_icon.sh)|g")
-time_format=$(get "@adaptive_time_format" "%R")
-date_format=$(get "@adaptive_date_format" "%d/%m/%Y")
-time_min_width=$(get "@adaptive_time_min_width" "0")
-date_min_width=$(get "@adaptive_date_min_width" "0")
-battery_min_width=$(get "@adaptive_battery_min_width" "0")
 cpu_min_width=$(get "@adaptive_cpu_min_width" "0")
-compact_min_width=$(get "@adaptive_compact_min_width" "0")
-session_compact_chars=$(get "@adaptive_session_compact_chars" "8")
-host_compact_chars=$(get "@adaptive_host_compact_chars" "8")
 script_dir=$(CDPATH='' cd "$(dirname "$0")" && pwd -P)
+# Optional metadata modules are opt-in. Width controls density, not whether a
+# requested module exists. Disabled modules neither load nor register producers.
+optional_modules=''
+for status_module in time date battery; do
+  if [ "$(get "@adaptive_${status_module}_enabled" off)" = on ]; then
+    . "$script_dir/modules/$status_module.sh"
+    optional_modules="$optional_modules $status_module"
+  fi
+done
 
 # activity -> warn, bell -> alert, else normal: recolors the #I/#W separator.
 mark="#{?window_bell_flag,$c_alert,#{?window_activity_flag,$c_warn,$c_fg}}"
 
-# --- status format strings ---------------------------------------------------
-# Store complete styled sections in opaque options.  The status format can then
-# conditionally include each whole section without commas inside style strings
-# confusing tmux's conditional-format parser.
-t "@adaptive_status_time" "#[fg=$c_fg,bg=$c_bg,nounderscore,noitalics]${time_format} "
-t "@adaptive_status_metadata_separator" "#[fg=$c_fg,bg=$c_bg,nounderscore,noitalics]#{@pl3} "
-t "@adaptive_status_date" "#[fg=$c_fg,bg=$c_bg,nounderscore,noitalics]${date_format} "
-t "@adaptive_status_metrics_lead" "#[fg=$c_sel,bg=$c_bg]#{@pl2}#[fg=$c_fg,bg=$c_sel] "
-# Match Peon Ping's tab-colour semantics: ready/idle green, working amber,
-# done blue, and approval/blocked red.  Use this theme's adaptive equivalents
-# so the badge remains legible in both light and dark terminal palettes.
+# --- status layout -----------------------------------------------------------
+# Providers declare content and visibility; one compiler owns all boundaries.
 context_state=$(get "@adaptive_context_state" "")
 context_label=$(get "@adaptive_context_label" "")
 context_icon=$(get "@adaptive_context_icon" "#{@adaptive_agent_icon}")
 context_suffix=$(get "@adaptive_context_suffix" "")
 context_range_open=$(get "@adaptive_context_range_open" "")
 context_range_close=$(get "@adaptive_context_range_close" "")
-action1_icon=$(get "@adaptive_action_1_icon" "")
-action2_icon=$(get "@adaptive_action_2_icon" "")
-action3_icon=$(get "@adaptive_action_3_icon" "")
-action1_range=$(get "@adaptive_action_1_range" "")
-action2_range=$(get "@adaptive_action_2_range" "")
-action3_range=$(get "@adaptive_action_3_range" "")
-session_range_open=$(get "@adaptive_session_range_open" "")
-session_range_close=$(get "@adaptive_session_range_close" "")
+context_visible=$(get "@adaptive_context_visible" "#{!=:${context_state},}")
+usage_range_open=$(get "@adaptive_usage_range_open" "")
+usage_range_close=$(get "@adaptive_usage_range_close" "")
 host_icon=$(get "@adaptive_host_icon" "")
 host_range_open=$(get "@adaptive_host_range_open" "")
 host_range_close=$(get "@adaptive_host_range_close" "")
-if [ -n "$host_icon" ]; then host_prefix="${host_icon} "; else host_prefix=""; fi
+session_range_open=$(get "@adaptive_session_range_open" "")
+session_range_close=$(get "@adaptive_session_range_close" "")
 context_bg="#{?#{==:${context_state},blocked},$c_alert,#{?#{==:${context_state},working},$c_warn,#{?#{==:${context_state},done},$c_info,#{?#{==:${context_state},idle},$c_accent,$c_dim}}}}"
 context_mark="#{?#{==:${context_state},blocked},!,#{?#{==:${context_state},working},●,#{?#{==:${context_state},done},✓,#{?#{==:${context_state},idle},○,?}}}}"
-context_content="${context_icon} #{?#{e|>=:#{client_width},${compact_min_width}},${context_label},${context_mark}}"
-t "@adaptive_status_context_open" "${context_range_open}#[fg=${context_bg},bg=$c_sel,nobold]#{@pl2}#[fg=$c_bg,bg=${context_bg},bold] ${context_content}"
-t "@adaptive_status_context_close" " ${context_range_close}"
-t "@adaptive_status_context_standalone" "${context_range_open}#[fg=${context_bg},bg=$c_bg,nobold]#{@pl2}#[fg=$c_bg,bg=${context_bg},bold] ${context_content}${context_suffix} ${context_range_close}"
-t "@adaptive_status_host_close" "#[fg=$c_accent,bg=$c_sel,nobold]#{@pl2}#[fg=$c_bg,bg=$c_accent] ${context_icon} "
-t "@adaptive_status_empty_context_standalone" "#[fg=$c_accent,bg=$c_bg,nobold]#{@pl2}#[fg=$c_bg,bg=$c_accent] ${context_icon} "
-t "@adaptive_status_actions_right" "#[range=user|${action1_range}]#[fg=$c_dim,bg=$c_sel,nobold]#{@pl3}#[fg=$c_fg] ${action1_icon} #[range=]#[range=user|${action2_range}]#[fg=$c_dim,bg=$c_sel]#{@pl3}#[fg=$c_fg] ${action2_icon} #[range=]#[range=user|${action3_range}]#[fg=$c_dim,bg=$c_sel]#{@pl3}#[fg=$c_fg] ${action3_icon} #[range=]"
-# Agent is the non-negotiable tail.  Every optional tier before it includes its
-# own opening separator, so a hidden/truncated tier can never leave a loose grey
-# triangle behind.  Below host_min_width the complete right side is only the
-# agent capsule; session/window/host compaction therefore creates space for
-# state instead of allowing tmux to crop it away. Host remains present at every
-# width, using the same middle truncation as the session in compact mode.
-host_content="#{?#{e|>=:#{client_width},${compact_min_width}},#H,#($script_dir/compact-label #{q:host} $host_compact_chars prefix)}"
-t "@adaptive_status_host_body" "${host_range_open}#[fg=$c_fg,bg=$c_sel,bold] ${host_prefix}${host_content} ${host_range_close}"
-t "@adaptive_status_host" "#[fg=$c_sel,bg=$c_bg]#{@pl2}#{E:@adaptive_status_host_body}"
-t "@adaptive_status_metrics" "#{E:@adaptive_status_metrics_lead}#{?#{e|>=:#{client_width},${battery_min_width}},${battery_status} #{@pl3} ,}#{?#{e|>=:#{client_width},${cpu_min_width}},${cpu_range_open}${cpu_status}${cpu_range_close} #[fg=$c_dim]#{@pl3}#[fg=$c_fg],}#{E:@adaptive_status_host_body}"
-metrics_visible="#{||:#{e|>=:#{client_width},${battery_min_width}},#{e|>=:#{client_width},${cpu_min_width}}}"
-context_open="#{E:@adaptive_status_context_open}"
-empty_context="#{E:@adaptive_status_host_close}"
-if [ -n "$action1_icon" ]; then action_strip="#{E:@adaptive_status_actions_right}"; else action_strip=""; fi
-time_visible="#{e|>=:#{client_width},${time_min_width}}"
-date_visible="#{e|>=:#{client_width},${date_min_width}}"
-metadata_pair_visible="#{&&:${time_visible},${date_visible}}"
-t "status-right" "${maintenance}#{?${time_visible},#{E:@adaptive_status_time},}#{?${metadata_pair_visible},#{E:@adaptive_status_metadata_separator},}#{?${date_visible},#{E:@adaptive_status_date},}#{?${metrics_visible},#{E:@adaptive_status_metrics},#{E:@adaptive_status_host}}${action_strip}#{?${context_state},${context_open}${context_suffix}#{E:@adaptive_status_context_close},${empty_context}}"
-# The session pill also owns global key-mode feedback: disabled bindings are a
-# red OFF warning, prefix is blue, and the ordinary session stays green. Keep
-# OFF ahead of prefix so the more important persistent state always wins.
+# Compile two fixed-control variants once. Width decisions are native formats:
+# window names, counts and client sizes update without a process or scan.
+. "$script_dir/lib/status-layout.sh"
 off_mode="#{==:#{client_key_table},off}"
 prefix_mode="#{==:#{client_key_table},prefix}"
 sess_bg="#{?${off_mode},$c_alert,#{?${prefix_mode},$c_info,$c_accent}}"
+sess_fg=$c_bg
 sess_full_content="#{?${off_mode},OFF,#S}"
-sess_compact_content="#{?${off_mode},OFF,#($script_dir/compact-label #{q:session_name} $session_compact_chars)}"
-session_tail="#[fg=$sess_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
-t "@adaptive_status_session_full" "${session_range_open}#[fg=$c_bg,bg=$sess_bg,bold] ${sess_full_content} ${session_range_close}${session_tail}"
-t "@adaptive_status_session_compact" "${session_range_open}#[fg=$c_bg,bg=$sess_bg,bold] ${sess_compact_content} ${session_range_close}${session_tail}"
-t "status-left" "#{?#{e|>=:#{client_width},${compact_min_width}},#{E:@adaptive_status_session_full},#{E:@adaptive_status_session_compact}}"
-
-t "window-status-format" "#[fg=$c_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}#[fg=$c_fg,bg=$c_bg] #I #{?#{e|>=:#{client_width},${compact_min_width}},#[fg=${mark}]#{@pl1}#[fg=$c_fg] #W ,}#[fg=$c_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
-t "window-status-current-format" "#[fg=$c_bg,bg=$c_sel,nobold,nounderscore,noitalics]#{@pl0}#[fg=$c_fg,bg=$c_sel,nobold] #I #{?#{e|>=:#{client_width},${compact_min_width}},#{@pl1} #W ,}#[fg=$c_sel,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
+sess_compact_content="#{?${off_mode},OFF,#{=/6/…:session_name}}"
+cpu_compact_status=$(get "@adaptive_cpu_compact" "$cpu_status")
+for density in full compact; do
+  status_layout_begin
+  for status_module in $optional_modules; do
+    "status_module_$status_module"
+  done
+  if [ "$density" = full ]; then
+    host_content="#H"
+    context_content="${context_icon} ${context_label}"
+    if [ -n "$context_suffix" ]; then
+      context_content="${context_content}${context_range_close} ${usage_range_open}${context_suffix}${usage_range_close}"
+    fi
+    session_content=$sess_full_content
+    cpu_content=$cpu_status
+  else
+    host_content='#{=/4/…:host}'
+    context_content="${context_icon} ${context_mark}"
+    session_content=$sess_compact_content
+    cpu_content=$cpu_compact_status
+  fi
+  if [ -n "$cpu_status" ]; then
+    status_layout_item "${density}_cpu" "#{e|>=:#{client_width},${cpu_min_width}}" "$c_sel" "$c_fg" nobold "$cpu_content" "$cpu_range_open" "$cpu_range_close"
+  fi
+  status_layout_item "${density}_host" 1 "$c_sel" "$c_fg" bold "${host_icon} ${host_content}" "$host_range_open" "$host_range_close"
+  status_layout_item "${density}_context" "$context_visible" "$context_bg" "$c_bg" bold "$context_content" "$context_range_open" "$context_range_close"
+  status_layout_end
+  t "@adaptive_${density}_right" "${maintenance}${status_layout}"
+  status_layout_begin left
+  status_layout_item "${density}_session" 1 "$sess_bg" "$sess_fg" bold "$session_content" "$session_range_open" "$session_range_close"
+  for status_slot in 2 1 3; do
+    status_icon=$(get "@adaptive_action_${status_slot}_icon" "")
+    status_range=$(get "@adaptive_action_${status_slot}_range" "")
+    status_on=$(get "@adaptive_action_${status_slot}_visible" "1")
+    status_active=$(get "@adaptive_action_${status_slot}_active" "")
+    status_colour=$c_fg
+    status_weight=nobold
+    if [ -n "$status_active" ]; then
+      status_colour="#{?${status_active},$c_accent,$c_dim}"
+      status_weight="#{?${status_active},bold,nobold}"
+    fi
+    status_layout_item "${density}_action${status_slot}" "#{&&:#{!=:${status_icon},},#{==:${status_on},1}}" "$c_sel" "$status_colour" "$status_weight" "$status_icon" "#[range=user|${status_range}]" '#[range=]'
+  done
+  status_layout_end
+  # The powerline cap itself is the gap; add no extra blank cells.
+  t "@adaptive_${density}_left" "$status_layout"
+done
+# Width counts display cells (including CJK), ignores styles, and loops over
+# the actual session windows. Never reference the final formats in these probes.
+t @adaptive_full_tabs_width '#{w:#{W: #I  #W }}'
+t @adaptive_full_fixed_width '#{W:,#{e|+:#{w:#{T:@adaptive_full_left}},#{w:#{T:@adaptive_full_right}}}}'
+t @adaptive_compact_fixed_width '#{W:,#{e|+:#{w:#{T:@adaptive_compact_left}},#{w:#{T:@adaptive_compact_right}}}}'
+t @adaptive_controls_full '#{||:#{==:#{client_width},0},#{e|>=:#{client_width},#{e|+:#{E:@adaptive_full_fixed_width},#{E:@adaptive_full_tabs_width}}}}'
+t @adaptive_tabs_budget '#{e|-:#{client_width},#{E:@adaptive_compact_fixed_width}}'
+t @adaptive_tabs_full '#{||:#{E:@adaptive_controls_full},#{e|>=:#{E:@adaptive_tabs_budget},#{E:@adaptive_full_tabs_width}}}'
+t @adaptive_tab_name_limit '#{e|-:#{e|/:#{E:@adaptive_tabs_budget},#{session_windows}},#{e|+:5,#{w:window_index}}}'
+t @adaptive_tab_trim_limit '#{e|-:#{E:@adaptive_tab_name_limit},1}'
+t @adaptive_tab_label '#{?#{E:@adaptive_tabs_full},#W,#{?#{e|>=:#{E:@adaptive_tab_name_limit},4},#{=/#{E:@adaptive_tab_trim_limit}/…:window_name},}}'
+t @adaptive_tab_text "#{?#{E:@adaptive_tabs_full}, #I #[fg=${mark}]#{@pl1}#[fg=$c_fg] #W , #I#{?#{e|>=:#{E:@adaptive_tab_name_limit},4}, #{E:@adaptive_tab_label},} }"
+t status-left '#{?#{E:@adaptive_controls_full},#{T:@adaptive_full_left},#{T:@adaptive_compact_left}}'
+t status-right '#{?#{E:@adaptive_controls_full},#{T:@adaptive_full_right},#{T:@adaptive_compact_right}}'
+t "@adaptive_status_session_full" "${session_range_open}#[fg=$sess_fg,bg=$sess_bg,bold] ${sess_full_content} ${session_range_close}#[default]"
+t "@adaptive_status_session_compact" "${session_range_open}#[fg=$sess_fg,bg=$sess_bg,bold] ${sess_compact_content} ${session_range_close}#[default]"
+t "window-status-format" "#[fg=$c_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}#[fg=$c_fg,bg=$c_bg]#{E:@adaptive_tab_text}#[fg=$c_bg,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
+t "window-status-current-format" "#[fg=$c_bg,bg=$c_sel,nobold,nounderscore,noitalics]#{@pl0}#[fg=$c_fg,bg=$c_sel,nobold]#{E:@adaptive_tab_text}#[fg=$c_sel,bg=$c_bg,nobold,nounderscore,noitalics]#{@pl0}"
 
 # The widgets in status-right come from battery/cpu plugins that tpm may source
 # after this theme; re-run them so their
@@ -275,7 +292,11 @@ t "window-status-current-format" "#[fg=$c_bg,bg=$c_sel,nobold,nounderscore,noita
 # won't expand it either — so without this the test silently fails and the
 # battery/cpu widgets never get re-sourced, leaving their placeholders
 # (#{cpu_percentage}, …) raw and rendering empty after any theme re-apply.
-for p in tmux-battery/battery tmux-cpu/cpu; do
+widget_plugins=tmux-cpu/cpu
+case " $optional_modules " in
+  *' battery '*) widget_plugins="$widget_plugins tmux-battery/battery" ;;
+esac
+for p in $widget_plugins; do
    [ -x "$plug/$p.tmux" ] && "$plug/$p.tmux" >/dev/null 2>&1
 done
 for c in $(tmux list-clients -F '#{client_name}' 2>/dev/null); do

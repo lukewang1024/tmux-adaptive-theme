@@ -37,10 +37,14 @@ def main():
     script = Path(__file__).resolve()
     repo = script.parent.parent
 
-    def tmux(*args):
-        return subprocess.check_output(["tmux", "-L", socket, *args], text=True)
-
     with tempfile.TemporaryDirectory() as directory:
+        env = dict(os.environ, XDG_STATE_HOME=str(Path(directory) / "state"))
+        env.pop("TMUX", None)
+        env.pop("TMUX_PANE", None)
+
+        def tmux(*args):
+            return subprocess.check_output(["tmux", "-L", socket, *args], env=env, text=True)
+
         try:
             tmux("-f", "/dev/null", "new-session", "-d", "-s", "test")
             for mode, expected in (("dark", "2828/2c2c/3434"), ("light", "fafa/fafa/fafa")):
@@ -56,7 +60,7 @@ def main():
                 assert f"rgb:{expected}" in reply, (mode, reply)
                 print(f"{mode} OSC 11 background: ok")
         finally:
-            subprocess.run(["tmux", "-L", socket, "kill-server"], check=False)
+            subprocess.run(["tmux", "-L", socket, "kill-server"], env=env, check=False)
 
 
 if __name__ == "__main__":
