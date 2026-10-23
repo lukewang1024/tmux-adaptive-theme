@@ -123,13 +123,21 @@ renderer runs during a status refresh. Separators and closing caps are outside
 all mouse regions. Run `python3 test/status-layout.py` to verify colour adjacency
 and hit regions across light/dark and hidden-item combinations.
 
-The left group has no added blank gap before the window tabs. Layout density
-is chosen from the actual display width of all window names and the fixed
-controls, per client. Under pressure, Session and Host shorten, CPU uses the
-provider's optional `@adaptive_cpu_compact`, and Agent status drops its label
-and usage. Window names then truncate with an ellipsis; narrower tabs show
-only their index. CJK names use terminal display cells. Enabled metadata modules
-stay visible; CPU keeps its minimum-width setting.
+The left group has no added blank gap before the window tabs. Control density
+uses the actual display width of window names and a conservative plain-text
+width budget for configured controls. Under pressure, Session and Host shorten,
+CPU uses the provider's optional `@adaptive_cpu_compact`, and Agent status drops
+its label and usage. Tabs share the remaining compact-control budget equally;
+long names truncate with an ellipsis, and narrower tabs show only their index.
+This can shorten an unusually long name even when other names are short. CJK
+names use terminal display cells. Enabled metadata modules stay visible; CPU
+keeps its minimum-width setting.
+
+Width probes do not expand the styled layout or loop over windows. Only the
+left/right density decisions inspect total name demand; each tab does constant
+work with a fixed number of configured items. Rendering N windows is therefore
+O(N), with no external width worker, cache, or refresh hooks. Hidden configured
+items retain their width allowance so every tab uses the same budget.
 
 The session label keeps its key-mode colours: normal uses the accent background,
 prefix uses blue, and OFF uses red, independently of Sidebar visibility.

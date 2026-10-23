@@ -2,6 +2,7 @@
 # Compile visible items into tmux formats. No process runs at status refresh.
 status_layout_begin() {
   status_layout=''
+  status_width_probe=''
   status_direction=${1:-right}
   status_previous_bg=$c_bg
   status_previous_visible='#{==:0,1}'
@@ -15,6 +16,13 @@ status_layout_item() {
     1) status_visible='#{==:1,1}' ;;
     0) status_visible='#{==:0,1}' ;;
   esac
+  # Measure content once, without expanding the recursive paint/boundary tree.
+  # Reserve configured items even when a window-local condition hides them:
+  # tab budgets must not depend on which window is currently being formatted.
+  # One boundary cell plus both padding cells is a conservative upper bound.
+  if [ -n "$status_content" ] && [ "$status_visible" != '#{==:0,1}' ]; then
+    status_width_probe="${status_width_probe}| ${status_content} "
+  fi
   # Boundaries are outside all mouse ranges. Their colours depend solely on
   # the previous visible surface, regardless of item order or visibility.
   if [ "$status_direction" = left ]; then
