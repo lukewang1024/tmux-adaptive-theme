@@ -245,6 +245,7 @@ for density in full compact; do
   status_layout_item "${density}_context" "$context_visible" "$context_bg" "$c_bg" bold "$context_content" "$context_range_open" "$context_range_close"
   status_layout_end
   t "@adaptive_${density}_right" "${maintenance}${status_layout}"
+  t "@adaptive_${density}_right_width_probe" "${maintenance}${status_width_probe}"
   status_layout_begin left
   status_layout_item "${density}_session" 1 "$sess_bg" "$sess_fg" bold "$session_content" "$session_range_open" "$session_range_close"
   for status_slot in 2 1 3; do
@@ -263,19 +264,23 @@ for density in full compact; do
   status_layout_end
   # The powerline cap itself is the gap; add no extra blank cells.
   t "@adaptive_${density}_left" "$status_layout"
+  t "@adaptive_${density}_left_width_probe" "$status_width_probe"
 done
-# Width counts display cells (including CJK), ignores styles, and loops over
-# the actual session windows. Never reference the final formats in these probes.
+# Only the two control groups inspect total window-name demand. Each tab has a
+# constant-cost equal-share budget, so rendering N windows is O(N), not O(N²).
+# Width probes contain text only; measuring the paint tree repeatedly used to
+# amplify its nested visibility/colour expressions on every window label.
 t @adaptive_full_tabs_width '#{w:#{W: #I  #W }}'
-t @adaptive_full_fixed_width '#{W:,#{e|+:#{w:#{T:@adaptive_full_left}},#{w:#{T:@adaptive_full_right}}}}'
-t @adaptive_compact_fixed_width '#{W:,#{e|+:#{w:#{T:@adaptive_compact_left}},#{w:#{T:@adaptive_compact_right}}}}'
+t @adaptive_full_fixed_width '#{e|+:#{w:#{T:@adaptive_full_left_width_probe}},#{w:#{T:@adaptive_full_right_width_probe}}}'
+t @adaptive_compact_fixed_width '#{e|+:#{w:#{T:@adaptive_compact_left_width_probe}},#{w:#{T:@adaptive_compact_right_width_probe}}}'
 t @adaptive_controls_full '#{||:#{==:#{client_width},0},#{e|>=:#{client_width},#{e|+:#{E:@adaptive_full_fixed_width},#{E:@adaptive_full_tabs_width}}}}'
 t @adaptive_tabs_budget '#{e|-:#{client_width},#{E:@adaptive_compact_fixed_width}}'
-t @adaptive_tabs_full '#{||:#{E:@adaptive_controls_full},#{e|>=:#{E:@adaptive_tabs_budget},#{E:@adaptive_full_tabs_width}}}'
-t @adaptive_tab_name_limit '#{e|-:#{e|/:#{E:@adaptive_tabs_budget},#{session_windows}},#{e|+:5,#{w:window_index}}}'
+# Demand telemetry remains available, but must never be a tab-render dependency.
+t @adaptive_tabs_full '#{e|>=:#{E:@adaptive_tabs_budget},#{E:@adaptive_full_tabs_width}}'
+t @adaptive_tab_name_limit '#{e|-:#{e|/:#{E:@adaptive_tabs_budget},#{session_windows}},#{e|+:7,#{w:window_index}}}'
 t @adaptive_tab_trim_limit '#{e|-:#{E:@adaptive_tab_name_limit},1}'
-t @adaptive_tab_label '#{?#{E:@adaptive_tabs_full},#W,#{?#{e|>=:#{E:@adaptive_tab_name_limit},4},#{=/#{E:@adaptive_tab_trim_limit}/…:window_name},}}'
-t @adaptive_tab_text "#{?#{E:@adaptive_tabs_full}, #I #[fg=${mark}]#{@pl1}#[fg=$c_fg] #W , #I#{?#{e|>=:#{E:@adaptive_tab_name_limit},4}, #{E:@adaptive_tab_label},} }"
+t @adaptive_tab_label '#{=/#{E:@adaptive_tab_trim_limit}/…:window_name}'
+t @adaptive_tab_text " #I#{?#{e|>=:#{E:@adaptive_tab_name_limit},4}, #[fg=${mark}]#{@pl1}#[fg=$c_fg] #{E:@adaptive_tab_label},} "
 t status-left '#{?#{E:@adaptive_controls_full},#{T:@adaptive_full_left},#{T:@adaptive_compact_left}}'
 t status-right '#{?#{E:@adaptive_controls_full},#{T:@adaptive_full_right},#{T:@adaptive_compact_right}}'
 t "@adaptive_status_session_full" "${session_range_open}#[fg=$sess_fg,bg=$sess_bg,bold] ${sess_full_content} ${session_range_close}#[default]"
