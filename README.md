@@ -17,6 +17,7 @@ Window separators use the context provider's state colours when present:
 done uses the same blue as the context capsule, working uses yellow, blocked
 uses red, and idle uses the accent colour. Windows without a provider use the
 normal text colour. Separators always use the full-height thin Powerline glyph.
+When a narrow tab hides its name and separator, its index carries the same state colour.
 Terminal activity and bells do not change the window tab's appearance.
 
 Pane backgrounds also follow the resolved palette. This makes tmux's OSC 11

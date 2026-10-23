@@ -7,7 +7,7 @@
 #   * @adaptive_mode = light | full — `light` keeps fixed One Dark/Light accents;
 #     `full` takes the accent + semantic warn/alert marks from the terminal's own
 #     ANSI palette.
-#   * Context state colours mark the fixed full-height #I/#W separator.
+#   * Context state colours mark the #I/#W separator, or #I in index-only tabs.
 #     Terminal activity and bells do not affect window tab styling.
 #
 # Light vs dark is decided by the terminal's ACTUAL theme (not the OS
@@ -282,7 +282,7 @@ t @adaptive_tabs_full '#{e|>=:#{E:@adaptive_tabs_budget},#{E:@adaptive_full_tabs
 t @adaptive_tab_name_limit '#{e|-:#{e|/:#{E:@adaptive_tabs_budget},#{session_windows}},#{e|+:7,#{w:window_index}}}'
 t @adaptive_tab_trim_limit '#{e|-:#{E:@adaptive_tab_name_limit},1}'
 t @adaptive_tab_label '#{=/#{E:@adaptive_tab_trim_limit}/…:window_name}'
-t @adaptive_tab_text " #I#{?#{e|>=:#{E:@adaptive_tab_name_limit},4}, ${tab_marker} #{E:@adaptive_tab_label},} "
+t @adaptive_tab_text " #{?#{e|>=:#{E:@adaptive_tab_name_limit},4},#I ${tab_marker} #{E:@adaptive_tab_label},#[fg=${mark}]#I#[fg=$c_fg]} "
 t status-left '#{?#{E:@adaptive_controls_full},#{T:@adaptive_full_left},#{T:@adaptive_compact_left}}'
 t status-right '#{?#{E:@adaptive_controls_full},#{T:@adaptive_full_right},#{T:@adaptive_compact_right}}'
 t "@adaptive_status_session_full" "${session_range_open}#[fg=$sess_fg,bg=$sess_bg,bold] ${sess_full_content} ${session_range_close}#[default]"
