@@ -9,9 +9,15 @@ Requires a terminal with [True Color](https://en.wikipedia.org/wiki/Color_depth#
 `@adaptive_mode` decides where the accent colors come from (default `light`):
 
 - **`light`** — fixed One Dark / One Light accents.
-- **`full`** — the session/host pill accent and the semantic activity/bell marks are taken from the terminal's own ANSI palette, so those hues match your terminal theme. The chrome (bar bg, tab bg, body text) is unchanged — only the accent (`@adaptive_accent`, default `colour2`), the activity mark/cap (`colour3`) and the bell mark/cap (`colour1`) change.
+- **`full`** — the session/host pill accent and context state colours use the terminal's own ANSI palette: accent (`@adaptive_accent`, default `colour2`), working (`colour3`), blocked (`colour1`), and done (`colour4`). The chrome (bar bg, tab bg, body text) is unchanged.
 
 Either way the palette follows the terminal's light/dark background — see [Appearance detection](#appearance-detection).
+
+Window separators use the context provider's state colours when present:
+done uses the same blue as the context capsule, working uses yellow, blocked
+uses red, and idle uses the accent colour. Windows without a provider use the
+normal text colour. Separators always use the full-height thin Powerline glyph.
+Terminal activity and bells do not change the window tab's appearance.
 
 Pane backgrounds also follow the resolved palette. This makes tmux's OSC 11
 background replies agree with its appearance when several terminals with
@@ -64,6 +70,7 @@ set -g @adaptive_battery     "#{battery_icon} #{battery_percentage}"
 ```
 
 - **`@adaptive_cpu`** — CPU content before the host pill (default empty; `@adaptive_widgets` remains a fallback). `#{cpu_percentage}` and `#{cpu_icon}` use [tmux-cpu](https://github.com/tmux-plugins/tmux-cpu).
+- **`@adaptive_host_icon`** — host icon (default `󰍹`). Compact controls show only this icon; full controls also show the hostname. Providers retain the same clickable host range in both layouts. When the context capsule is hidden, Host uses the accent colour.
 - **`@adaptive_time_enabled`**, **`@adaptive_date_enabled`**, **`@adaptive_battery_enabled`** — independent `on` / `off` switches, all defaulting to `off`.
 - **`@adaptive_time_format`** / **`@adaptive_date_format`** — [strftime](http://man7.org/linux/man-pages/man3/strftime.3.html) formats (defaults `%R`, `%d/%m/%Y`).
 - **`@adaptive_battery`** — battery content (default empty). `#{battery_icon}` and `#{battery_percentage}` require [tmux-battery](https://github.com/tmux-plugins/tmux-battery); custom tmux formats or `#(...)` producers also work. Empty content adds no item.

@@ -7,8 +7,8 @@
 #   * @adaptive_mode = light | full — `light` keeps fixed One Dark/Light accents;
 #     `full` takes the accent + semantic warn/alert marks from the terminal's own
 #     ANSI palette.
-#   * Activity/bell show as a recolored #I/#W separator mark (activity -> yellow,
-#     bell -> red) rather than a reverse-video banner.
+#   * Context state colours mark the fixed full-height #I/#W separator.
+#     Terminal activity and bells do not affect window tab styling.
 #
 # Light vs dark is decided by the terminal's ACTUAL theme (not the OS
 # preference). Primary source: tmux's native client-light-theme/client-dark-theme
@@ -140,8 +140,7 @@ t "message-style" "bg=$message_bg,fg=$message_fg,fill=$message_bg,bold"
 t "message-command-style" "bg=$message_bg,fg=$message_fg,fill=$message_bg,bold"
 
 tw "window-status-style" "fg=$c_fg,bg=$c_bg,none"
-# Keep activity/bell tabs neutral (no reverse-video banner); the indicator is
-# the recolored separator mark in window-status-format below.
+# Keep activity/bell tabs neutral; separator colours reflect context state.
 tw "window-status-activity-style" "fg=$c_fg,bg=$c_bg,none"
 tw "window-status-bell-style" "fg=$c_fg,bg=$c_bg,none"
 tw "window-status-separator" ""
@@ -188,9 +187,6 @@ for status_module in time date battery; do
   fi
 done
 
-# activity -> warn, bell -> alert, else normal: recolors the #I/#W separator.
-mark="#{?window_bell_flag,$c_alert,#{?window_activity_flag,$c_warn,$c_fg}}"
-
 # --- status layout -----------------------------------------------------------
 # Providers declare content and visibility; one compiler owns all boundaries.
 context_state=$(get "@adaptive_context_state" "")
@@ -200,15 +196,21 @@ context_suffix=$(get "@adaptive_context_suffix" "")
 context_range_open=$(get "@adaptive_context_range_open" "")
 context_range_close=$(get "@adaptive_context_range_close" "")
 context_visible=$(get "@adaptive_context_visible" "#{!=:${context_state},}")
+host_bg="#{?${context_visible},$c_sel,$c_accent}"
+host_fg="#{?${context_visible},$c_fg,$c_bg}"
 usage_range_open=$(get "@adaptive_usage_range_open" "")
 usage_range_close=$(get "@adaptive_usage_range_close" "")
-host_icon=$(get "@adaptive_host_icon" "")
+host_icon=$(get "@adaptive_host_icon" "󰍹")
 host_range_open=$(get "@adaptive_host_range_open" "")
 host_range_close=$(get "@adaptive_host_range_close" "")
 session_range_open=$(get "@adaptive_session_range_open" "")
 session_range_close=$(get "@adaptive_session_range_close" "")
 context_bg="#{?#{==:${context_state},blocked},$c_alert,#{?#{==:${context_state},working},$c_warn,#{?#{==:${context_state},done},$c_info,#{?#{==:${context_state},idle},$c_accent,$c_dim}}}}"
 context_mark="#{?#{==:${context_state},blocked},!,#{?#{==:${context_state},working},●,#{?#{==:${context_state},done},✓,#{?#{==:${context_state},idle},○,?}}}}"
+# Use the same semantic colour as the context capsule. A completion bell must
+# not turn a provider's blue done state into a red alert.
+mark="#{?${context_visible},${context_bg},$c_fg}"
+tab_marker="#[fg=${mark}]#{@pl1}#[fg=$c_fg]"
 # Compile two fixed-control variants once. Width decisions are native formats:
 # window names, counts and client sizes update without a process or scan.
 . "$script_dir/lib/status-layout.sh"
@@ -225,7 +227,7 @@ for density in full compact; do
     "status_module_$status_module"
   done
   if [ "$density" = full ]; then
-    host_content="#H"
+    host_content="${host_icon} #H"
     context_content="${context_icon} ${context_label}"
     if [ -n "$context_suffix" ]; then
       context_content="${context_content}${context_range_close} ${usage_range_open}${context_suffix}${usage_range_close}"
@@ -233,7 +235,7 @@ for density in full compact; do
     session_content=$sess_full_content
     cpu_content=$cpu_status
   else
-    host_content='#{=/4/…:host}'
+    host_content=$host_icon
     context_content="${context_icon} ${context_mark}"
     session_content=$sess_compact_content
     cpu_content=$cpu_compact_status
@@ -241,7 +243,7 @@ for density in full compact; do
   if [ -n "$cpu_status" ]; then
     status_layout_item "${density}_cpu" "#{e|>=:#{client_width},${cpu_min_width}}" "$c_sel" "$c_fg" nobold "$cpu_content" "$cpu_range_open" "$cpu_range_close"
   fi
-  status_layout_item "${density}_host" 1 "$c_sel" "$c_fg" bold "${host_icon} ${host_content}" "$host_range_open" "$host_range_close"
+  status_layout_item "${density}_host" 1 "$host_bg" "$host_fg" bold "$host_content" "$host_range_open" "$host_range_close"
   status_layout_item "${density}_context" "$context_visible" "$context_bg" "$c_bg" bold "$context_content" "$context_range_open" "$context_range_close"
   status_layout_end
   t "@adaptive_${density}_right" "${maintenance}${status_layout}"
@@ -280,7 +282,7 @@ t @adaptive_tabs_full '#{e|>=:#{E:@adaptive_tabs_budget},#{E:@adaptive_full_tabs
 t @adaptive_tab_name_limit '#{e|-:#{e|/:#{E:@adaptive_tabs_budget},#{session_windows}},#{e|+:7,#{w:window_index}}}'
 t @adaptive_tab_trim_limit '#{e|-:#{E:@adaptive_tab_name_limit},1}'
 t @adaptive_tab_label '#{=/#{E:@adaptive_tab_trim_limit}/…:window_name}'
-t @adaptive_tab_text " #I#{?#{e|>=:#{E:@adaptive_tab_name_limit},4}, #[fg=${mark}]#{@pl1}#[fg=$c_fg] #{E:@adaptive_tab_label},} "
+t @adaptive_tab_text " #I#{?#{e|>=:#{E:@adaptive_tab_name_limit},4}, ${tab_marker} #{E:@adaptive_tab_label},} "
 t status-left '#{?#{E:@adaptive_controls_full},#{T:@adaptive_full_left},#{T:@adaptive_compact_left}}'
 t status-right '#{?#{E:@adaptive_controls_full},#{T:@adaptive_full_right},#{T:@adaptive_compact_right}}'
 t "@adaptive_status_session_full" "${session_range_open}#[fg=$sess_fg,bg=$sess_bg,bold] ${sess_full_content} ${session_range_close}#[default]"

@@ -4,6 +4,7 @@ import fcntl
 import os
 from pathlib import Path
 import pty
+import re
 import select
 import signal
 import struct
@@ -39,7 +40,7 @@ with tempfile.TemporaryDirectory(prefix='adaptive-width-') as directory:
         return tmux('display', '-p', '-c', name, fmt)
     try:
         tmux('-f', '/dev/null', 'new-session', '-d', '-s', 'long-session-name', '-n', 'one')
-        for key, value_ in (('@adaptive_time_enabled', 'off'), ('@adaptive_date_enabled', 'off'), ('@adaptive_cpu', 'CPU42 MEM56'), ('@adaptive_cpu_compact', 'CPU42'), ('@adaptive_context_state', '#{@test_agent_state}'), ('@adaptive_context_label', 'CODING AGENT'), ('@adaptive_context_suffix', 'QUOTA73')):
+        for key, value_ in (('@adaptive_time_enabled', 'off'), ('@adaptive_date_enabled', 'off'), ('@adaptive_cpu', 'CPU42 MEM56'), ('@adaptive_cpu_compact', 'CPU42'), ('@adaptive_context_state', '#{@test_agent_state}'), ('@adaptive_context_label', 'CODING AGENT'), ('@adaptive_context_suffix', 'QUOTA73'), ('@adaptive_host_icon', 'H'), ('@adaptive_host_range_open', '#[range=user|host]'), ('@adaptive_host_range_close', '#[range=]')):
             tmux('set', '-g', key, value_)
         tmux('set', '-w', '@test_agent_state', 'working')
         tmux('run-shell', str(repo / 'tmux-adaptive-theme.tmux'))
@@ -48,6 +49,11 @@ with tempfile.TemporaryDirectory(prefix='adaptive-width-') as directory:
         drain()
         name = tmux('list-clients', '-F', '#{client_name}')
         assert value('#{E:@adaptive_controls_full}') == '1'
+        hostname = value('#{host}')
+        assert hostname in value('#{E:@adaptive_item_full_host_body}')
+        compact_host = value('#{E:@adaptive_item_compact_host_body}')
+        assert 'range=user|host' in compact_host and hostname not in compact_host, compact_host
+        assert re.sub(r'#\[[^\]]*\]', '', compact_host).strip() == 'H', compact_host
         # Same client width, greater tab demand: fixed controls compact first.
         for index, title in enumerate(('investigate responsive layout', '修复侧边栏状态和窗口标签', 'test unicode width handling'), 1):
             tmux('new-window', '-d', '-n', title)
