@@ -218,8 +218,10 @@ off_mode="#{==:#{client_key_table},off}"
 prefix_mode="#{==:#{client_key_table},prefix}"
 sess_bg="#{?${off_mode},$c_alert,#{?${prefix_mode},$c_info,$c_accent}}"
 sess_fg=$c_bg
-sess_full_content="#{?${off_mode},OFF,#S}"
-sess_compact_content="#{?${off_mode},OFF,#{=/6/…:session_name}}"
+# Four terminal cells fit two CJK characters. Keep that cap in both densities
+# and use every available cell for the name rather than a truncation marker.
+sess_full_content="#{?${off_mode},OFF,#{=4:session_name}}"
+sess_compact_content=$sess_full_content
 cpu_compact_status=$(get "@adaptive_cpu_compact" "$cpu_status")
 for density in full compact; do
   status_layout_begin
@@ -280,9 +282,8 @@ t @adaptive_tabs_budget '#{e|-:#{client_width},#{E:@adaptive_compact_fixed_width
 # Demand telemetry remains available, but must never be a tab-render dependency.
 t @adaptive_tabs_full '#{e|>=:#{E:@adaptive_tabs_budget},#{E:@adaptive_full_tabs_width}}'
 t @adaptive_tab_name_limit '#{e|-:#{e|/:#{E:@adaptive_tabs_budget},#{session_windows}},#{e|+:7,#{w:window_index}}}'
-t @adaptive_tab_trim_limit '#{e|-:#{E:@adaptive_tab_name_limit},1}'
-t @adaptive_tab_label '#{=/#{E:@adaptive_tab_trim_limit}/…:window_name}'
-t @adaptive_tab_text " #{?#{e|>=:#{E:@adaptive_tab_name_limit},4},#I ${tab_marker} #{E:@adaptive_tab_label},#[fg=${mark}]#I#[fg=$c_fg]} "
+t @adaptive_tab_label '#{=/#{E:@adaptive_tab_name_limit}/:window_name}'
+t @adaptive_tab_text " #{?#{e|>=:#{E:@adaptive_tab_name_limit},2},#I ${tab_marker} #{E:@adaptive_tab_label},#[fg=${mark}]#I#[fg=$c_fg]} "
 t status-left '#{?#{E:@adaptive_controls_full},#{T:@adaptive_full_left},#{T:@adaptive_compact_left}}'
 t status-right '#{?#{E:@adaptive_controls_full},#{T:@adaptive_full_right},#{T:@adaptive_compact_right}}'
 t "@adaptive_status_session_full" "${session_range_open}#[fg=$sess_fg,bg=$sess_bg,bold] ${sess_full_content} ${session_range_close}#[default]"

@@ -54,6 +54,11 @@ with tempfile.TemporaryDirectory(prefix='adaptive-width-') as directory:
         compact_host = value('#{E:@adaptive_item_compact_host_body}')
         assert 'range=user|host' in compact_host and hostname not in compact_host, compact_host
         assert re.sub(r'#\[[^\]]*\]', '', compact_host).strip() == 'H', compact_host
+        for session_name, label in (('中文会话名称', '中文'), ('ab中会话', 'ab中'), ('long-session-name', 'long')):
+            tmux('rename-session', session_name)
+            for density in ('full', 'compact'):
+                body = value(f'#{{E:@adaptive_item_{density}_session_body}}')
+                assert re.sub(r'#\[[^\]]*\]', '', body).strip() == label, body
         # Same client width, greater tab demand: fixed controls compact first.
         for index, title in enumerate(('investigate responsive layout', '修复侧边栏状态和窗口标签', 'test unicode width handling'), 1):
             tmux('new-window', '-d', '-n', title)
@@ -69,14 +74,20 @@ with tempfile.TemporaryDirectory(prefix='adaptive-width-') as directory:
             tabs = int(value('#{w:#{W:#{E:window-status-format}}}'))
             assert value('#{W:#{E:@adaptive_controls_full}}') == full * 4
             observations.append((width, full, labels_full, limit, left, right, tabs))
+            if limit >= 2:
+                names = value('#{W:#{window_name}|}').split('|')[:-1]
+                labels = value('#{W:#{E:@adaptive_tab_label}|}').split('|')[:-1]
+                for title, label in zip(names, labels, strict=True):
+                    expected = title[:limit if title.isascii() else limit // 2]
+                    assert label == expected, (width, limit, title, label)
             if width >= 70:
                 assert left + right + tabs <= width, observations
             rendered = value('#{E:status-right}')
             if full == '0':
                 assert 'QUOTA73' not in rendered and 'CPU42' in rendered, rendered
         assert any(row[1] == '1' for row in observations), observations
-        assert any(row[2] == '0' and row[3] >= 4 for row in observations), observations
-        assert any(row[3] < 4 for row in observations), observations
+        assert any(row[2] == '0' and row[3] >= 2 for row in observations), observations
+        assert any(row[3] < 2 for row in observations), observations
         print('PASS demand-driven full controls, compact controls, shortened labels, index-only and CJK widths')
         print(observations)
     finally:

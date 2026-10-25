@@ -133,10 +133,12 @@ and hit regions across light/dark and hidden-item combinations.
 
 The left group has no added blank gap before the window tabs. Control density
 uses the actual display width of window names and a conservative plain-text
-width budget for configured controls. Under pressure, Session and Host shorten,
-CPU uses the provider's optional `@adaptive_cpu_compact`, and Agent status drops
-its label and usage. Tabs share the remaining compact-control budget equally;
-long names truncate with an ellipsis, and narrower tabs show only their index.
+width budget for configured controls. The session name always uses at most four
+terminal cells (two CJK characters). Under pressure, Host shortens, CPU uses the
+provider's optional `@adaptive_cpu_compact`, and Agent status drops its label and
+usage. Tabs share the remaining compact-control budget equally; long names
+truncate without an ellipsis, and tabs with fewer than two name cells show only
+their index. All available name cells display useful characters.
 This can shorten an unusually long name even when other names are short. CJK
 names use terminal display cells. Enabled metadata modules stay visible; CPU
 keeps its minimum-width setting.
