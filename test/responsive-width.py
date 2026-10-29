@@ -54,17 +54,19 @@ with tempfile.TemporaryDirectory(prefix='adaptive-width-') as directory:
         compact_host = value('#{E:@adaptive_item_compact_host_body}')
         assert 'range=user|host' in compact_host and hostname not in compact_host, compact_host
         assert re.sub(r'#\[[^\]]*\]', '', compact_host).strip() == 'H', compact_host
-        for session_name, label in (('中文会话名称', '中文'), ('ab中会话', 'ab中'), ('long-session-name', 'long')):
+        for session_name, label in (('CCM运维', 'CCM'), ('中文会话名称', '中文'), ('ab中会话', 'ab中'), ('long-session-name', 'long')):
             tmux('rename-session', session_name)
-            for density in ('full', 'compact'):
+            for density, expected in (('full', session_name), ('compact', label)):
                 body = value(f'#{{E:@adaptive_item_{density}_session_body}}')
-                assert re.sub(r'#\[[^\]]*\]', '', body).strip() == label, body
+                assert re.sub(r'#\[[^\]]*\]', '', body).strip() == expected, body
+            left = re.sub(r'#\[[^\]]*\]', '', value('#{T:status-left}'))
+            assert session_name in left, (session_name, left)
         # Same client width, greater tab demand: fixed controls compact first.
         for index, title in enumerate(('investigate responsive layout', '修复侧边栏状态和窗口标签', 'test unicode width handling'), 1):
             tmux('new-window', '-d', '-n', title)
         assert value('#{E:@adaptive_controls_full}') == '0'
         observations = []
-        for width in (240, 180, 130, 110, 90, 70, 50):
+        for width in (318, 240, 180, 130, 110, 90, 70, 50):
             resize(width)
             full = value('#{E:@adaptive_controls_full}')
             labels_full = value('#{E:@adaptive_tabs_full}')
@@ -74,6 +76,8 @@ with tempfile.TemporaryDirectory(prefix='adaptive-width-') as directory:
             tabs = int(value('#{w:#{W:#{E:window-status-format}}}'))
             assert value('#{W:#{E:@adaptive_controls_full}}') == full * 4
             observations.append((width, full, labels_full, limit, left, right, tabs))
+            session = re.sub(r'#\[[^\]]*\]', '', value('#{T:status-left}')).strip(' \ue0b0')
+            assert session == ('long-session-name' if full == '1' else 'long'), (width, full, session)
             if limit >= 2:
                 names = value('#{W:#{window_name}|}').split('|')[:-1]
                 labels = value('#{W:#{E:@adaptive_tab_label}|}').split('|')[:-1]

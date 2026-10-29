@@ -218,10 +218,10 @@ off_mode="#{==:#{client_key_table},off}"
 prefix_mode="#{==:#{client_key_table},prefix}"
 sess_bg="#{?${off_mode},$c_alert,#{?${prefix_mode},$c_info,$c_accent}}"
 sess_fg=$c_bg
-# Four terminal cells fit two CJK characters. Keep that cap in both densities
-# and use every available cell for the name rather than a truncation marker.
-sess_full_content="#{?${off_mode},OFF,#{=4:session_name}}"
-sess_compact_content=$sess_full_content
+# Full controls include the whole name in their width budget. Under pressure,
+# four terminal cells fit two CJK characters without a truncation marker.
+sess_full_content="#{?${off_mode},OFF,#{session_name}}"
+sess_compact_content="#{?${off_mode},OFF,#{=4:session_name}}"
 cpu_compact_status=$(get "@adaptive_cpu_compact" "$cpu_status")
 for density in full compact; do
   status_layout_begin
