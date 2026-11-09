@@ -75,12 +75,16 @@ fi
 
 if [ "$appearance" = light ]; then
    # Atom One Light
-   c_bg="#fafafa"; c_fg="#383a42"; c_sel="#e5e5e6"; c_dim="#a0a1a7"
+   c_bg="#fafafa"; c_fg="#383a42"; c_sel="#e5e5e6"; c_dim="#62666f"
    c_accent="#50a14f"; c_warn="#c18401"; c_alert="#e45649"; c_info="#4078f2"
+   c_raised="#d0d2d8"; c_hover="#62666f"
+   c_header_fg=$c_fg; c_header_hover_fg="#ffffff"
 else
    # One Dark
-   c_bg="#282c34"; c_fg="#aab2bf"; c_sel="#3e4452"; c_dim="#5c6370"
+   c_bg="#282c34"; c_fg="#aab2bf"; c_sel="#3e4452"; c_dim="#8d95a3"
    c_accent="#98c379"; c_warn="#e5c07b"; c_alert="#e06c75"; c_info="#61afef"
+   c_raised="#4b5263"; c_hover="#5c6370"
+   c_header_fg="#ffffff"; c_header_hover_fg="#ffffff"
 fi
 
 # full mode: take the accent + semantic warn/alert from the terminal's own ANSI
@@ -91,6 +95,14 @@ if [ "$(get "@adaptive_mode" "light")" = full ]; then
    c_alert=colour1                                 # bell mark / cap
    c_info=colour4
 fi
+
+# Consumers such as the workbench sidebar use the same effective palette as
+# this status bar. Publish it as one versioned tmux option so a theme switch
+# cannot leave them mixing colors from two appearances.
+palette=$(printf '{"version":1,"background":"%s","foreground":"%s","selection":"%s","muted":"%s","raised":"%s","hover":"%s","header_foreground":"%s","header_hover_foreground":"%s","accent":"%s","warning":"%s","alert":"%s","info":"%s"}' \
+   "$c_bg" "$c_fg" "$c_sel" "$c_dim" "$c_raised" "$c_hover" \
+   "$c_header_fg" "$c_header_hover_fg" "$c_accent" "$c_warn" "$c_alert" "$c_info")
+t "@adaptive_palette" "$palette"
 
 # Powerline separators are kept in opaque @pl* options and referenced as #{@pl*}
 # in the (pure-ASCII) format strings below. A multibyte glyph written straight

@@ -51,6 +51,16 @@ add-zsh-hook precmd _adaptive_theme
 
 On every apply the theme publishes the resolved value (`light`/`dark`) to **`${XDG_STATE_HOME:-~/.local/state}/appearance`** (atomic write, only on change). This is a per-host signal other tools can follow without querying the terminal themselves — for example an editor flipping its own light/dark background in lock-step with the bar. Because tmux consumes the mode-2031 report and does **not** forward it to programs running in its panes, a file is the reliable way to reach them; watch it (e.g. with libuv `fs_event`) and react.
 
+### Shared palette interface
+
+The theme also publishes the effective status-bar palette in the global tmux
+user option `@adaptive_palette` as versioned JSON. Consumers can read it with
+`tmux show-option -gqv @adaptive_palette`; it is refreshed whenever the theme is
+applied, including light/dark switches and `full` mode accent changes. The
+palette includes the base, selection, readable muted text, header surfaces, and
+the semantic `accent`, `warning`, `alert`, and `info` colors used for idle,
+working, blocked, and completed states.
+
 ### Activity and bell
 
 A window's `#I`/`#W` separator turns yellow on activity and red on a bell, instead of the default reverse-video banner.
