@@ -215,6 +215,7 @@ usage_range_close=$(get "@adaptive_usage_range_close" "")
 host_icon=$(get "@adaptive_host_icon" "󰍹")
 host_range_open=$(get "@adaptive_host_range_open" "")
 host_range_close=$(get "@adaptive_host_range_close" "")
+host_min_width=$(get "@adaptive_host_min_width" "0")
 session_range_open=$(get "@adaptive_session_range_open" "")
 session_range_close=$(get "@adaptive_session_range_close" "")
 context_bg="#{?#{==:${context_state},blocked},$c_alert,#{?#{==:${context_state},working},$c_warn,#{?#{==:${context_state},done},$c_info,#{?#{==:${context_state},idle},$c_accent,$c_dim}}}}"
@@ -257,14 +258,25 @@ for density in full compact; do
   if [ -n "$cpu_status" ]; then
     status_layout_item "${density}_cpu" "#{e|>=:#{client_width},${cpu_min_width}}" "$c_sel" "$c_fg" nobold "$cpu_content" "$cpu_range_open" "$cpu_range_close"
   fi
-  status_layout_item "${density}_host" 1 "$host_bg" "$host_fg" bold "$host_content" "$host_range_open" "$host_range_close"
+  for status_slot in 1 2 3; do
+    status_icon=$(get "@adaptive_right_action_${status_slot}_icon" "")
+    status_range=$(get "@adaptive_right_action_${status_slot}_range" "")
+    status_on=$(get "@adaptive_right_action_${status_slot}_visible" "1")
+    if [ -n "$status_icon" ]; then
+      status_layout_item "${density}_right_action${status_slot}" \
+        "#{&&:#{!=:${status_icon},},#{==:${status_on},1}}" \
+        "$c_sel" "$c_fg" nobold "$status_icon" \
+        "#[range=user|${status_range}]" '#[range=]'
+    fi
+  done
+  status_layout_item "${density}_host" "#{e|>=:#{client_width},${host_min_width}}" "$host_bg" "$host_fg" bold "$host_content" "$host_range_open" "$host_range_close"
   status_layout_item "${density}_context" "$context_visible" "$context_bg" "$c_bg" bold "$context_content" "$context_range_open" "$context_range_close"
   status_layout_end
   t "@adaptive_${density}_right" "${maintenance}${status_layout}"
   t "@adaptive_${density}_right_width_probe" "${maintenance}${status_width_probe}"
   status_layout_begin left
   status_layout_item "${density}_session" 1 "$sess_bg" "$sess_fg" bold "$session_content" "$session_range_open" "$session_range_close"
-  for status_slot in 2 1 3; do
+  for status_slot in 1 2 3; do
     status_icon=$(get "@adaptive_action_${status_slot}_icon" "")
     status_range=$(get "@adaptive_action_${status_slot}_range" "")
     status_on=$(get "@adaptive_action_${status_slot}_visible" "1")

@@ -123,10 +123,19 @@ loaded later can read `@adaptive_theme_dir` and run
 repaints preserve the interface without knowing which provider supplied it.
 
 Action providers may set `@adaptive_action_1_visible` through
-`@adaptive_action_3_visible` to a tmux format returning `1` or `0` (default `1`).
-The condition wraps the whole item, including its separator and mouse range,
-so a hidden action leaves no clickable blank space. Pane-local options and
-`client_width` are evaluated at render time without reapplying the theme.
+`@adaptive_action_3_visible` for status-left, and
+`@adaptive_right_action_1_visible` through
+`@adaptive_right_action_3_visible` for status-right. Values are tmux formats
+returning `1` or `0` (default `1`). Right-side actions are laid out from the
+window list out toward the right edge, after CPU and before Host. The condition
+wraps the whole item, including its separator and mouse range, so a hidden
+action leaves no clickable blank space. Pane-local options and `client_width`
+are evaluated at render time without reapplying the theme.
+
+Providers may set `@adaptive_host_min_width` to the minimum client width for the
+Host item. CPU uses `@adaptive_cpu_min_width`. Workbench sets the Host threshold
+to zero so it remains visible at every width; CPU hides at its configured
+threshold.
 
 
 `@adaptive_context_visible` may override context visibility with a tmux boolean
@@ -152,7 +161,8 @@ truncate without an ellipsis, and tabs with fewer than two name cells show only
 their index. All available name cells display useful characters.
 This can shorten an unusually long name even when other names are short. CJK
 names use terminal display cells. Enabled metadata modules stay visible; CPU
-keeps its minimum-width setting.
+keeps its minimum-width setting. Workbench keeps Host visible at narrower widths
+than CPU, so CPU disappears first as the status bar contracts.
 
 Width probes do not expand the styled layout or loop over windows. Only the
 left/right density decisions inspect total name demand; each tab does constant

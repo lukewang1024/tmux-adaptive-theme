@@ -32,6 +32,9 @@ tmux -L "$socket" set-option -g @adaptive_cpu C
 tmux -L "$socket" set-option -g @adaptive_cpu_min_width 0
 tmux -L "$socket" set-option -g @adaptive_cpu_range_open '#[range=user|cpu]'
 tmux -L "$socket" set-option -g @adaptive_cpu_range_close '#[range=]'
+tmux -L "$socket" set-option -g @adaptive_host_min_width 0
+tmux -L "$socket" set-option -g @adaptive_right_action_1_icon U
+tmux -L "$socket" set-option -g @adaptive_right_action_1_range url
 tmux -L "$socket" set-option -g @adaptive_action_1_icon A
 tmux -L "$socket" set-option -g @adaptive_action_1_range action_one
 tmux -L "$socket" set-option -g @adaptive_action_2_icon B
@@ -63,12 +66,12 @@ assert_context() {
     exit 1
   esac
   rendered_right=$(tmux -L "$socket" display-message -p '#{T:@adaptive_full_right}')
-  case $rendered_left in *'range=user|prefix'*'range=user|action_two'*'range=user|action_one'*'range=user|action_three'*) ;; *)
+  case $rendered_left in *'range=user|prefix'*'range=user|action_one'*'range=user|action_two'*'range=user|action_three'*) ;; *)
     printf 'action and context ranges were not rendered in order: %s\n' "$rendered_right" >&2
     exit 1
   esac
-  case $rendered_right in *'range=user|cpu'*'range=user|host'*) ;; *)
-    printf 'CPU and host ranges were not rendered in order: %s\n' "$rendered_right" >&2
+  case $rendered_right in *'range=user|cpu'*'range=user|url'*'range=user|host'*) ;; *)
+    printf 'CPU, URL and Host ranges were not rendered in order: %s\n' "$rendered_right" >&2
     exit 1
   esac
 }
@@ -77,6 +80,18 @@ assert_context
 tmux -L "$socket" run-shell "$repo/tmux-adaptive-theme.tmux"
 sleep 0.2
 assert_context
+# Host remains visible when CPU is hidden by its width threshold.
+tmux -L "$socket" set-option -g @adaptive_cpu_min_width 9999
+tmux -L "$socket" run-shell "$repo/tmux-adaptive-theme.tmux"
+rendered_narrow=$(tmux -L "$socket" display-message -p '#{T:@adaptive_compact_right}')
+case $rendered_narrow in *'range=user|url'*'range=user|host'*) ;; *)
+  printf 'URL and Host were not retained in compact width: %s\n' "$rendered_narrow" >&2
+  exit 1
+esac
+case $rendered_narrow in *'range=user|cpu'*)
+  printf 'CPU remained visible below its width threshold: %s\n' "$rendered_narrow" >&2
+  exit 1
+esac
 # Providers can hide a complete action without a theme repaint. Pane focus
 # and per-client sizing are format inputs, not asynchronous status scripts.
 tmux -L "$socket" set-option -g @adaptive_action_2_visible '#{==:#{@provider_agent},1}'
@@ -98,5 +113,5 @@ rendered=$(tmux -L "$socket" display-message -p '#{E:status-left}')
 case $rendered in *action_three*) ;; *) exit 1 ;; esac
 tmux -L "$socket" select-pane -t "$first_pane"
 rendered=$(tmux -L "$socket" display-message -p '#{E:status-left}')
-case $rendered in *action_two*action_one*action_three*) ;; *) exit 1 ;; esac
+case $rendered in *action_one*action_two*action_three*) ;; *) exit 1 ;; esac
 printf '%s\n' 'context provider and dynamic action visibility: ok'
